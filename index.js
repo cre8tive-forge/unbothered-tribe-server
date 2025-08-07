@@ -1,0 +1,49 @@
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
+// import authRoute from "./routes/authRoute.js";
+// import loginsRoute from "./routes/loginsRoute.js";
+// import { verifyUser } from "./middleware/auth.js";
+import connectToDB from "./library/mongodb.js";
+dotenv.config();
+
+const app = express();
+
+app.use(express.json());
+app.use(cookieParser());
+
+const allowedOrigins = [
+  // "https://buzzkit-mu.vercel.app",
+  "http://localhost:5173",
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+app.options("*", cors());
+app.get("/", (request, response) => {
+  response.send("Hey there! I am handling this server!");
+});
+// app.use("/api/auth", authRoute);
+// app.use("/api/log", loginsRoute);
+
+// app.get("/api/protected", verifyUser, (req, res) => {
+//   res.json({ message: "You’re authorized", userId: req.userId });
+// });
+connectToDB();
+app.listen(process.env.PORT, () =>
+  console.log(`Listening on PORT ${process.env.PORT}`)
+);
