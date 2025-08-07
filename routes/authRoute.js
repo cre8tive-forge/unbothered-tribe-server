@@ -6,6 +6,8 @@ import { LoginCodes } from "../models/login_codes.js";
 import nodemailer from "nodemailer";
 const router = express.Router();
 import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 router.post("/login/code", async (req, res) => {
   const { email } = req.body;
@@ -34,8 +36,16 @@ router.post("/login/code", async (req, res) => {
     },
   });
 
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+
+  const templatePath = path.join(
+    __dirname,
+    "../templates/login-code-email.html"
+  );
+
   const htmlTemplate = fs
-    .readFileSync("../server/templates/login-code-email.html", "utf-8")
+    .readFileSync(templatePath, "utf-8")
     .replace("{{LOGIN_CODE}}", code)
     .replace(
       "{{LOGIN_LINK}}",
@@ -68,9 +78,9 @@ router.post("/login", async (req, res) => {
       .json({ error: true, message: "Email and code are required." });
   try {
     const entry = await LoginCodes.findOne({ email });
-    if (!entry)
+    if (!entry) return res.status(400).json({ message: "Invalid code" });
+    if (code !== entry.code)
       return res.status(400).json({ message: "Invalid code" });
-    if (code !== entry.code) return res.status(400).json({ message: "Invalid code" });
     if (new Date(entry.expires_at) < new Date()) {
       await LoginCodes.deleteOne({ email });
       return res
