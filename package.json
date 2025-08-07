@@ -1,5 +1,5 @@
 {
-  "name": "Cre8tive Forge Server",
+"name": "cre8tive-forge-server",
   "version": "1.0.0",
   "description": "Cre8tive Forge Server",
   "main": "index.js",
