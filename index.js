@@ -2,19 +2,17 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
-// import authRoute from "./routes/authRoute.js";
-// import loginsRoute from "./routes/loginsRoute.js";
-// import { verifyUser } from "./middleware/auth.js";
+import contactRoute from "./routes/contactRoute.js";
 import connectToDB from "./library/mongodb.js";
 dotenv.config();
 
 const app = express();
-
+app.set("trust proxy", true);
 app.use(express.json());
 app.use(cookieParser());
 
 const allowedOrigins = [
-  // "https://buzzkit-mu.vercel.app",
+  "https://cre8tiveforge.vercel.app",
   "http://localhost:5173",
 ];
 
@@ -37,7 +35,7 @@ app.options("*", cors());
 app.get("/", (request, response) => {
   response.send("Hey there! I am handling this server!");
 });
-// app.use("/api/auth", authRoute);
+app.use("/api/contact", contactRoute);
 // app.use("/api/log", loginsRoute);
 
 // app.get("/api/protected", verifyUser, (req, res) => {
