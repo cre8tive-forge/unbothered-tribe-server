@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import contactRoute from "./routes/contactRoute.js";
+import authRoute from "./routes/authRoute.js";
 import connectToDB from "./library/mongodb.js";
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.get("/", (request, response) => {
   response.send("Hey there! I am handling this server!");
 });
 app.use("/api/contact", contactRoute);
+app.use("/api/auth", authRoute);
 // app.use("/api/log", loginsRoute);
 
 // app.get("/api/protected", verifyUser, (req, res) => {
