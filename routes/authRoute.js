@@ -78,16 +78,19 @@ router.post("/login", async (req, res) => {
       .json({ error: true, message: "Email and code are required." });
   try {
     const entry = await LoginCodes.findOne({ email });
+
     if (!entry) return res.status(400).json({ message: "Invalid code" });
-    if (code !== entry.code)
+
+    if (code != entry.code)
+
       return res.status(400).json({ message: "Invalid code" });
+    
     if (new Date(entry.expires_at) < new Date()) {
       await LoginCodes.deleteOne({ email });
       return res
         .status(400)
         .json({ error: true, message: "Code has expired." });
     }
-    await LoginCodes.deleteOne({ email });
     const admin = await Admin.findOne({ email });
     if (!admin)
       return res
