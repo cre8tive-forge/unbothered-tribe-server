@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import contactRoute from "./routes/contactRoute.js";
 import authRoute from "./routes/authRoute.js";
+import reviewRoute from "./routes/reviewRoute.js";
 import connectToDB from "./library/mongodb.js";
 dotenv.config();
 
@@ -38,11 +39,9 @@ app.get("/", (request, response) => {
 });
 app.use("/api/contact", contactRoute);
 app.use("/api/auth", authRoute);
-// app.use("/api/log", loginsRoute);
+app.use("/api/review", reviewRoute);
 
-// app.get("/api/protected", verifyUser, (req, res) => {
-//   res.json({ message: "You’re authorized", userId: req.userId });
-// });
+
 connectToDB();
 app.listen(process.env.PORT, () =>
   console.log(`Listening on PORT ${process.env.PORT}`)
