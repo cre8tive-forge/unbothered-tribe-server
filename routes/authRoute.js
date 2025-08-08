@@ -36,6 +36,16 @@ router.post("/login/code", async (req, res) => {
     },
   });
 
+  const token = jwt.sign(
+    {
+      email,
+      code,
+      issuedAt: Date.now(),
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: "10m" }
+  );
+
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
 
@@ -49,7 +59,7 @@ router.post("/login/code", async (req, res) => {
     .replace("{{LOGIN_CODE}}", code)
     .replace(
       "{{LOGIN_LINK}}",
-      `https://yourapp.com/login?email=${email}&code=${code}`
+      `https://cre8tiveforge.vercel.app/login?token=${token}`
     );
   const mailOptions = {
     from: `Cre8tive Forge <${process.env.MAIL_USERNAME}>`,
@@ -82,9 +92,8 @@ router.post("/login", async (req, res) => {
     if (!entry) return res.status(400).json({ message: "Invalid code" });
 
     if (code != entry.code)
-
       return res.status(400).json({ message: "Invalid code" });
-    
+
     if (new Date(entry.expires_at) < new Date()) {
       await LoginCodes.deleteOne({ email });
       return res
@@ -116,6 +125,17 @@ router.post("/login", async (req, res) => {
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
+router.post("/verifytoken", async (req, res) => {
+  const { token } = req.body;
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { email, code } = decoded;
+    res.status(200).json({ error: false, email, code });
+  } catch (err) {
+    res.status(400).json({ error: true, message: "Invalid or expired token" });
   }
 });
 
