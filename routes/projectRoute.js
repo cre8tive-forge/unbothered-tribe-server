@@ -31,11 +31,10 @@ router.post("/store", upload.array("images"), async (req, res) => {
     res.status(500).json({
       error: true,
       message: "Unable to save your project. Please try again",
-      details: err.message, 
+      details: err.message,
     });
   }
 });
-
 
 router.get("/get", async (req, res) => {
   try {
@@ -43,6 +42,23 @@ router.get("/get", async (req, res) => {
     res.json(allproject);
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
+  }
+});
+
+router.post(`/find`, async (req, res) => {
+  const { projectId } = req.body;
+
+  try {
+    const findProject = await Projects.findOne({ _id: projectId });
+    if (!findProject) {
+      return res.status(401).json({
+        error: true,
+        message: "Project not found",
+      });
+    }
+    return res.json({ error: false, message: "Project found", findProject });
+  } catch (error) {
+    res.status(500).json({ message: "Unable to fetch project", error });
   }
 });
 
