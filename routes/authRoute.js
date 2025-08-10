@@ -4,10 +4,14 @@ import { Admin } from "../models/admins.js";
 import bcryptjs from "bcryptjs";
 import { LoginCodes } from "../models/login_codes.js";
 import nodemailer from "nodemailer";
+import {
+  code,
+  htmlTemplate,
+  mailOptions,
+  expires_at,
+  transporter,
+} from "../config/nodemailer.js";
 const router = express.Router();
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
 
 router.post("/login/code", async (req, res) => {
   const { email } = req.body;
@@ -18,23 +22,12 @@ router.post("/login/code", async (req, res) => {
   const admin = await Admin.findOne({ email });
   if (!admin)
     return res.status(401).json({ error: true, message: "Account not found." });
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  const expires_at = new Date(Date.now() + 10 * 60 * 1000);
+
   await LoginCodes.findOneAndUpdate(
     { email },
     { code, expires_at },
     { upsert: true, new: true }
   );
-
-  const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: {
-      user: process.env.MAIL_USERNAME,
-      pass: process.env.MAIL_PASSWORD,
-    },
-  });
 
   const token = jwt.sign(
     {
@@ -46,29 +39,18 @@ router.post("/login/code", async (req, res) => {
     { expiresIn: "10m" }
   );
 
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-
-  const templatePath = path.join(
-    __dirname,
-    "../templates/login-code-email.html"
-  );
-
-  const htmlTemplate = fs
-    .readFileSync(templatePath, "utf-8")
-    .replace("{{LOGIN_CODE}}", code)
-    .replace(
-      "{{LOGIN_LINK}}",
-      `https://cre8tiveforge.vercel.app/login?token=${token}`
-    );
-  const mailOptions = {
-    from: `Cre8tive Forge <${process.env.MAIL_USERNAME}>`,
-    to: email,
-    subject: `Your temporary Cre8tive Forge login code is ${code}`,
-    html: htmlTemplate,
-  };
   try {
-    await transporter.sendMail(mailOptions);
+    await transporter.sendMail({
+      ...mailOptions,
+      subject: `Your temporary Cre8tive Forge code is ${code}`,
+      to: email,
+      html: htmlTemplate
+        .replace("{{LOGIN_CODE}}", code)
+        .replace(
+          "{{LOGIN_LINK}}",
+          `https://cre8tiveforge.vercel.app/login?token=${token}`
+        ),
+    });
     return res
       .status(200)
       .json({ error: false, message: "Code sent to email." });
@@ -204,13 +186,111 @@ router.post("/verifytoken", async (req, res) => {
 //   }
 // });
 
-router.post("/logout", (req, res) => {
+router.get("/logout", async (req, res) => {
   res.clearCookie("auth_token", {
     httpOnly: true,
     sameSite: "None",
     secure: true,
   });
   res.json({ error: false, message: "Logged out successfully" });
+});
+
+router.post("/email/change/verify", async (req, res) => {
+  const { email } = req.body;
+
+  if (!email)
+    return res.status(400).json({ error: true, message: "Email is required" });
+  const emailExists = await Admin.findOne({ email });
+  if (emailExists) {
+    return res.status(400).json({
+      error: true,
+      message: "An account with this email already exists.",
+    });
+  }
+
+  await LoginCodes.findOneAndUpdate(
+    { email },
+    { code, expires_at },
+    { upsert: true, new: true }
+  );
+
+  const token = jwt.sign(
+    {
+      email,
+      code,
+      issuedAt: Date.now(),
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: "10m" }
+  );
+
+  try {
+    await transporter.sendMail({
+      ...mailOptions,
+      subject: `Your temporary Cre8tive Forge code is ${code}`,
+      to: email,
+      html: htmlTemplate
+        .replace("{{LOGIN_CODE}}", code)
+        .replace(
+          "{{LOGIN_LINK}}",
+          `https://cre8tiveforge.vercel.app/login?token=${token}`
+        ),
+    });
+    return res
+      .status(200)
+      .json({ error: false, message: "Code sent to email.", email });
+  } catch (err) {
+    console.error("Error sending mail:", err);
+    return res
+      .status(500)
+      .json({ error: true, message: "Failed to send code." });
+  }
+});
+router.post("/email/change", async (req, res) => {
+  const { newEmail, oldEmail, code } = req.body;
+
+  if (!oldEmail || !code || !newEmail) {
+    return res
+      .status(400)
+      .json({ error: true, message: "Email and code are required." });
+  }
+
+  try {
+    const entry = await LoginCodes.findOne({ email: newEmail });
+    if (!entry)
+      return res.status(400).json({ message: "Invalid code does not exist" });
+    if (code != entry.code)
+      return res.status(400).json({ message: "Invalid code" });
+    if (new Date(entry.expires_at) < new Date()) {
+      await LoginCodes.deleteOne({ newEmail });
+      return res
+        .status(400)
+        .json({ error: true, message: "Code has expired." });
+    }
+    await Admin.findOneAndUpdate(
+      { email: oldEmail },
+      { $set: { email: newEmail } }
+    );
+      const admin = await Admin.findOne({ email: newEmail });
+      if (!admin)
+        return res.status(401).json({
+          error: true,
+          message: "You are not authorized to perfom this action",
+        });
+    const adminObj = admin.toObject();
+    delete adminObj.password;
+    return res.status(200).json({
+      error: false,
+      message: "Email address updated successfully",
+      email: newEmail,
+      admin: adminObj,
+    });
+  } catch (err) {
+    console.error("Error sending mail:", err);
+    return res
+      .status(500)
+      .json({ error: true, message: "Failed to send code." });
+  }
 });
 
 export default router;
