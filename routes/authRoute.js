@@ -80,6 +80,45 @@ router.post("/login/code", async (req, res) => {
   }
 });
 
+router.post("/google-login", async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: true, message: "Email is required" });
+  }
+
+  try {
+    const admin = await Admin.findOne({ email });
+    if (!admin)
+      return res.status(403).json({
+        error: true,
+        message: "You are not authorized to access this platform.",
+      });
+
+    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
+    const adminObj = admin.toObject();
+    delete adminObj.password;
+    return res
+      .cookie("auth_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "None",
+        maxAge: 24 * 60 * 60 * 1000,
+      })
+      .status(200)
+      .json({
+        error: false,
+        token,
+        admin: adminObj,
+        message: "Welcome back admin. Redirecting...",
+      });
+  } catch (err) {
+    console.error("Google login error:", err);
+    res.status(500).json({ error: true, message: "Something went wrong" });
+  }
+});
+
 router.post("/login", async (req, res) => {
   const { email, code, password } = req.body;
   if (!email || !code)
@@ -102,26 +141,33 @@ router.post("/login", async (req, res) => {
     }
     const admin = await Admin.findOne({ email });
     if (!admin)
-      return res
-        .status(401)
-        .json({ error: true, message: "Invalid credentials" });
+      return res.status(403).json({
+        error: true,
+        message: "You are not authorized to access this platform.",
+      });
     const isMatch = await bcryptjs.compare(password, admin.password);
     if (!isMatch)
       return res.status(401).json({ error: true, message: "Invalid password" });
+
     const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
     });
-    res.cookie("auth_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "None",
-      maxAge: 24 * 60 * 60 * 1000,
-    });
-    return res.status(200).json({
-      error: false,
-      token: token,
-      message: "Code verified. Login successful.",
-    });
+    const adminObj = admin.toObject();
+    delete adminObj.password;
+    return res
+      .cookie("auth_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "None",
+        maxAge: 24 * 60 * 60 * 1000,
+      })
+      .status(200)
+      .json({
+        error: false,
+        token,
+        admin: adminObj,
+        message: "Welcome back admin. Redirecting...",
+      });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ error: "Something went wrong" });
