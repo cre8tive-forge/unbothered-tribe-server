@@ -5,10 +5,8 @@ import bcryptjs from "bcryptjs";
 import { LoginCodes } from "../models/login_codes.js";
 import nodemailer from "nodemailer";
 import {
-  code,
   htmlTemplate,
   mailOptions,
-  expires_at,
   transporter,
 } from "../config/nodemailer.js";
 import { upload, uploadToCloudinary } from "../resources/multer.js";
@@ -35,12 +33,13 @@ router.get("/verifyUser", async (req, res) => {
 });
 router.post("/login/code", async (req, res) => {
   const { email } = req.body;
-
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expires_at = new Date(Date.now() + 10 * 60 * 1000);
   if (!email)
     return res.status(400).json({ error: true, message: "Email is required" });
 
   await LoginCodes.findOneAndUpdate(
-    { email },
+    { email: email },
     { code, expires_at },
     { upsert: true, new: true }
   );
@@ -193,7 +192,8 @@ router.post("/email/change/verify", async (req, res) => {
       message: "An account with this email already exists.",
     });
   }
-
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expires_at = new Date(Date.now() + 10 * 60 * 1000);
   await LoginCodes.findOneAndUpdate(
     { email },
     { code, expires_at },

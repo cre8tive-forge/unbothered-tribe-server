@@ -16,8 +16,7 @@ export const htmlTemplate = fs.readFileSync(templatePath, "utf-8");
 export const mailOptions = {
   from: `Cre8tive Forge <${process.env.MAIL_USERNAME}>`,
 };
-export const code = Math.floor(100000 + Math.random() * 900000).toString();
-export const expires_at = new Date(Date.now() + 10 * 60 * 1000);
+
 
 export const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
