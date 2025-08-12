@@ -6,7 +6,6 @@ const router = express.Router();
 
 router.post("/store", upload.array("images"), async (req, res) => {
   const { name, category, date, client, description, type } = req.body;
-
   try {
     const imageUrls = await Promise.all(
       req.files.map((file) => uploadToCloudinary(file.buffer))
