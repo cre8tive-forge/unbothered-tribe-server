@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.post("/store", async (req, res) => {
   const { fullname, occupation, message, captchaToken } = req.body;
-console.log({ fullname });
+  console.log({ fullname });
   try {
     const secretKey = process.env.RECAPTCHA_SECRET_KEY;
     const captchaResponse = await axios.post(
@@ -41,9 +41,16 @@ router.get("/fetch", async (req, res) => {
     const reviews = await Reviews.find();
     res.status(200).json(reviews);
   } catch (err) {
-    res
-      .status(500)
-      .json({ error: true, message: "Failed to fetch reviews" });
+    res.status(500).json({ error: true, message: "Failed to fetch reviews" });
+  }
+});
+
+router.get("/last-updated", async (req, res) => {
+  try {
+    const latest = await Reviews.findOne().sort({ createdAt: -1 });
+    res.json({ lastUpdated: latest?.createdAt?.getTime() || Date.now() });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
   }
 });
 

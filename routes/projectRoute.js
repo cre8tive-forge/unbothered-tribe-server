@@ -34,7 +34,6 @@ router.post("/store", upload.array("images"), async (req, res) => {
     });
   }
 });
-
 router.get("/get", async (req, res) => {
   try {
     const allproject = await Projects.find().sort({ createdAt: -1 });
@@ -43,7 +42,6 @@ router.get("/get", async (req, res) => {
     res.status(500).json({ message: "Server error", error });
   }
 });
-
 router.post(`/find`, async (req, res) => {
   const { projectId } = req.body;
 
@@ -60,5 +58,22 @@ router.post(`/find`, async (req, res) => {
     res.status(500).json({ message: "Unable to fetch project", error });
   }
 });
+router.get("/last-updated", async (req, res) => {
+  try {
+    const latest = await Projects.findOne().sort({ createdAt: -1 });
+    res.json({ lastUpdated: latest?.createdAt?.getTime() || Date.now() });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+});
+router.get("/last-updated/:id", async (req, res) => {
+  try {
+    const project = await Projects.findById(req.params.id).select("updatedAt");
+    res.json({ lastUpdated: project?.updatedAt?.getTime() || Date.now() });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+});
+
 
 export default router;

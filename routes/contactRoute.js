@@ -35,7 +35,14 @@ router.post("/submit", async (req, res) => {
     });
   }
 });
-
+router.get("/last-updated", async (req, res) => {
+  try {
+    const latest = await Contacts.findOne().sort({ createdAt: -1 });
+    res.json({ lastUpdated: latest?.createdAt?.getTime() || Date.now() });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+});
 router.get("/fetch", async (req, res) => {
   try {
     const contacts = await Contacts.find();
