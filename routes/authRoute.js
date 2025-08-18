@@ -1,9 +1,8 @@
 import express from "express";
 import jwt from "jsonwebtoken";
-import { Admin } from "../models/admins.js";
+import { User } from "../models/users.js";
 import bcryptjs from "bcryptjs";
 import { LoginCodes } from "../models/login_codes.js";
-import nodemailer from "nodemailer";
 import {
   htmlTemplate,
   mailOptions,
@@ -20,44 +19,37 @@ router.get("/verifyUser", async (req, res) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const admin = await Admin.findById(decoded.id).select("-password");
+    const user = await User.findById(decoded.id).select("-password");
 
-    if (!admin) {
+    if (!user) {
       return res.status(404).json({ error: true, message: "User not found" });
     }
 
-    res.json({ error: false, admin });
+    res.json({ error: false, user });
   } catch (err) {
     res.status(401).json({ error: true, message: "Invalid or expired token" });
   }
 });
+
 router.post("/login/code", async (req, res) => {
   const { email } = req.body;
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const expires_at = new Date(Date.now() + 10 * 60 * 1000);
   if (!email)
     return res.status(400).json({ error: true, message: "Email is required" });
-
+  let user = await User.findOne({ email });
+  if (!user)
+    return res.status(401).json({ error: true, message: "Account not found" });
   await LoginCodes.findOneAndUpdate(
     { email: email },
     { code, expires_at },
     { upsert: true, new: true }
   );
 
-  const token = jwt.sign(
-    {
-      email,
-      code,
-      issuedAt: Date.now(),
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: "10m" }
-  );
-
   try {
     await transporter.sendMail({
       ...mailOptions,
-      subject: `Your temporary Cre8tive Forge code is ${code}`,
+      subject: `Your temporary RentaHome code is ${code}`,
       to: email,
       html: htmlTemplate.replace("{{LOGIN_CODE}}", code),
     });
@@ -71,6 +63,7 @@ router.post("/login/code", async (req, res) => {
       .json({ error: true, message: "Failed to send code." });
   }
 });
+
 router.post("/google-login", async (req, res) => {
   const { email } = req.body;
   if (!email) {
@@ -78,18 +71,18 @@ router.post("/google-login", async (req, res) => {
   }
 
   try {
-    const admin = await Admin.findOne({ email });
-    if (!admin)
-      return res.status(403).json({
+    const user = await User.findOne({ email });
+    if (!user)
+      return res.status(401).json({
         error: true,
-        message: "You are not authorized to access this platform.",
+        message: "Account not found",
       });
 
-    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
     });
-    const adminObj = admin.toObject();
-    delete adminObj.password;
+    const userObj = user.toObject();
+    delete userObj.password;
     return res
       .cookie("auth_token", token, {
         httpOnly: true,
@@ -101,14 +94,15 @@ router.post("/google-login", async (req, res) => {
       .json({
         error: false,
         token,
-        admin: adminObj,
-        message: "Welcome back admin. Redirecting...",
+        user: userObj,
+        message: "Login successful. Redirecting...",
       });
   } catch (err) {
     console.error("Google login error:", err);
     res.status(500).json({ error: true, message: "Something went wrong" });
   }
 });
+
 router.post("/login", async (req, res) => {
   const { email, code } = req.body;
   if (!email || !code)
@@ -130,18 +124,19 @@ router.post("/login", async (req, res) => {
         .json({ error: true, message: "Code has expired." });
     }
 
-    let admin = await Admin.findOne({ email });
+    let user = await User.findOne({ email });
 
-    if (!admin) {
-      admin = await Admin.create({ email });
-    }
+    if (!user)
+      return res
+        .status(401)
+        .json({ error: true, message: "Account not found" });
 
-    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
     });
 
-    let adminObj = admin.toObject();
-    delete adminObj.password;
+    let userObj = user.toObject();
+    delete userObj.password;
 
     return res
       .cookie("auth_token", token, {
@@ -154,7 +149,7 @@ router.post("/login", async (req, res) => {
       .json({
         error: false,
         token,
-        admin: adminObj,
+        user: userObj,
         message: "Login successful. Redirecting...",
       });
   } catch (err) {
@@ -162,6 +157,7 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ error: "Something went wrong" });
   }
 });
+
 router.post("/verifytoken", async (req, res) => {
   const { token } = req.body;
   try {
@@ -172,6 +168,7 @@ router.post("/verifytoken", async (req, res) => {
     res.status(400).json({ error: true, message: "Invalid or expired token" });
   }
 });
+
 router.get("/logout", async (req, res) => {
   res.clearCookie("auth_token", {
     httpOnly: true,
@@ -180,12 +177,13 @@ router.get("/logout", async (req, res) => {
   });
   res.json({ error: false, message: "Logged out successfully" });
 });
+
 router.post("/email/change/verify", async (req, res) => {
   const { email } = req.body;
 
   if (!email)
     return res.status(400).json({ error: true, message: "Email is required" });
-  const emailExists = await Admin.findOne({ email });
+  const emailExists = await User.findOne({ email });
   if (emailExists) {
     return res.status(400).json({
       error: true,
@@ -227,6 +225,7 @@ router.post("/email/change/verify", async (req, res) => {
       .json({ error: true, message: "Failed to send code." });
   }
 });
+
 router.post("/email/change", async (req, res) => {
   const { newEmail, oldEmail, code } = req.body;
 
@@ -253,23 +252,23 @@ router.post("/email/change", async (req, res) => {
         .status(400)
         .json({ error: true, message: "Code has expired." });
     }
-    await Admin.findOneAndUpdate(
+    await User.findOneAndUpdate(
       { email: oldEmail },
       { $set: { email: newEmail } }
     );
-    const admin = await Admin.findOne({ email: newEmail });
-    if (!admin)
+    const user = await User.findOne({ email: newEmail });
+    if (!user)
       return res.status(401).json({
         error: true,
         message: "You are not authorized to perfom this action",
       });
-    const adminObj = admin.toObject();
-    delete adminObj.password;
+    const userObj = user.toObject();
+    delete userObj.password;
     return res.status(200).json({
       error: false,
       message: "Email address updated successfully",
       email: newEmail,
-      admin: adminObj,
+      user: userObj,
     });
   } catch (err) {
     console.error("Error sending mail:", err);
@@ -278,6 +277,7 @@ router.post("/email/change", async (req, res) => {
       .json({ error: true, message: "Failed to send code." });
   }
 });
+
 router.post("/name/change", async (req, res) => {
   const { name, email } = req.body;
 
@@ -289,20 +289,20 @@ router.post("/name/change", async (req, res) => {
   }
 
   try {
-    const updatedAdmin = await Admin.findOneAndUpdate(
+    const updatedUser = await User.findOneAndUpdate(
       { email: email },
       { $set: { fullname: name } },
       { new: true }
     );
 
-    if (!updatedAdmin) {
+    if (!updatedUser) {
       return res.status(404).json({
         error: true,
         message: "User not found.",
       });
     }
-    const adminObj = updatedAdmin.toObject();
-    delete adminObj.password;
+    const userObj = updatedUser.toObject();
+    delete userObj.password;
     return res.status(200).json({
       error: false,
       message: "Name updated successfully!",
@@ -316,6 +316,7 @@ router.post("/name/change", async (req, res) => {
     });
   }
 });
+
 router.post("/password/change", async (req, res) => {
   const { email, newPassword, confirmPassword } = req.body;
 
@@ -345,25 +346,25 @@ router.post("/password/change", async (req, res) => {
 
   try {
     const hashedPassword = await bcryptjs.hash(newPassword, 10);
-    const updatedAdmin = await Admin.findOneAndUpdate(
+    const updatedUser = await User.findOneAndUpdate(
       { email: email },
       { $set: { password: hashedPassword } },
       { new: true }
     );
-    if (!updatedAdmin) {
+    if (!updatedUser) {
       return res.status(404).json({
         error: true,
         message: "User not found.",
       });
     }
 
-    const adminObj = updatedAdmin.toObject();
-    delete adminObj.password;
+    const userObj = updatedUser.toObject();
+    delete userObj.password;
 
     return res.status(200).json({
       error: false,
       message: "Password updated successfully!",
-      admin: adminObj,
+      user: userObj,
     });
   } catch (err) {
     console.error("Error updating password:", err);
@@ -373,6 +374,7 @@ router.post("/password/change", async (req, res) => {
     });
   }
 });
+
 router.post("/delete-account", async (req, res) => {
   const { userId } = req.body;
 
@@ -384,12 +386,12 @@ router.post("/delete-account", async (req, res) => {
   }
 
   try {
-    const admin = await Admin.findById(userId);
-    if (!admin)
+    const user = await User.findById(userId);
+    if (!user)
       return res.status(404).json({ error: true, message: "User not found." });
 
-    await LoginCodes.deleteMany({ email: admin.email });
-    await Admin.deleteOne({ _id: userId });
+    await LoginCodes.deleteMany({ email: user.email });
+    await User.deleteOne({ _id: userId });
 
     res.clearCookie("token", {
       httpOnly: true,
@@ -409,6 +411,7 @@ router.post("/delete-account", async (req, res) => {
     });
   }
 });
+
 router.post("/upload-avatar", upload.single("avatar"), async (req, res) => {
   try {
     const { email } = req.body;
@@ -427,29 +430,108 @@ router.post("/upload-avatar", upload.single("avatar"), async (req, res) => {
         .json({ error: true, message: "Failed to upload to Cloudinary." });
     }
 
-    const updatedAdmin = await Admin.findOneAndUpdate(
+    const updatedUser = await User.findOneAndUpdate(
       { email: email },
       { $set: { profilePhoto: imageUrl } },
       { new: true }
     );
 
-    if (!updatedAdmin) {
+    if (!updatedUser) {
       return res.status(404).json({ error: true, message: "User not found." });
     }
 
-    const adminObj = updatedAdmin.toObject();
-    delete adminObj.password;
+    const userObj = updatedUser.toObject();
+    delete userObj.password;
 
     return res.status(200).json({
       error: false,
       message: "Profile photo updated successfully!",
-      admin: adminObj,
+      user: userObj,
     });
   } catch (err) {
     console.error("Error uploading profile photo:", err);
     return res.status(500).json({
       error: true,
       message: "Failed to upload photo. Please try again.",
+    });
+  }
+});
+
+router.post("/signup", async (req, res) => {
+  const { firstname, lastname, phoneNumber, email, password, type } = req.body;
+  try {
+    const userExists = await User.findOne({ email });
+    if (userExists)
+      return res
+        .status(409)
+        .json({ error: true, message: "This email address already exists" });
+    else {
+      const ipAddress = req.ip;
+      const response = await fetch(`http://ip-api.com/json/${ipAddress}`);
+      const data = await response.json();
+
+      const country = data.country ? data.country : "Unknown";
+      const salt = await bcryptjs.genSalt(10),
+        hashPassword = await bcryptjs.hash(password, salt);
+
+      const createUser = await User.create({
+        firstname: firstname,
+        lastname: lastname,
+        number: phoneNumber,
+        email: email,
+        password: hashPassword,
+        country: country,
+        type: type,
+      });
+      if (createUser)
+        return res.status(201).json({
+          error: false,
+          message: `Welcome to RentaHome, ${firstname} ${lastname}`,
+        });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      error: true,
+      message: "Unable to create your account. Please try again",
+    });
+  }
+});
+
+router.post("/google/signup", async (req, res) => {
+  const { firstname, email, type } = req.body;
+  try {
+    const userExists = await User.findOne({ email });
+    if (userExists)
+      return res.status(409).json({
+        error: true,
+        message: "Account already exists. Proceed to login",
+      });
+    else {
+      const ipAddress = req.ip;
+      const response = await fetch(`http://ip-api.com/json/${ipAddress}`);
+      const data = await response.json();
+
+      const country = data.country ? data.country : "Unknown";
+
+      const createUser = await User.create({
+        firstname: firstname,
+        lastname: "",
+        number: "",
+        email: email,
+        password: "",
+        country: country,
+        type: type,
+      });
+      if (createUser)
+        return res.status(201).json({
+          error: false,
+          message: `Welcome to RentaHome, ${firstname}`,
+        });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      error: true,
+      message: "Unable to create your account. Please try again",
     });
   }
 });

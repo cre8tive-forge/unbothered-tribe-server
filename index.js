@@ -15,7 +15,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 const allowedOrigins = [
-  "https://cre8tiveforge.vercel.app",
+  "http://rentatruck-listing.vercel.app",
   "http://localhost:5173",
 ];
 

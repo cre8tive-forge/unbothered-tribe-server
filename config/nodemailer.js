@@ -14,7 +14,7 @@ const templatePath = path.join(
 
 export const htmlTemplate = fs.readFileSync(templatePath, "utf-8");
 export const mailOptions = {
-  from: `Cre8tive Forge <${process.env.MAIL_USERNAME}>`,
+  from: `RentaHome <${process.env.MAIL_USERNAME}>`,
 };
 
 
