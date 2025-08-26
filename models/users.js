@@ -2,14 +2,52 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
-    email: { type: String, required: true, unique: true },
-    firstname: { type: String, required: true, unique: false },
-    lastname: { type: String, required: false, unique: false },
-    number: { type: String, required: false, unique: false },
-    country: { type: String, required: false, unique: false },
-    type: { type: String, required: true, unique: false },
-    password: { type: String, required: false },
-    profilePhoto: { type: String, required: false },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    firstname: { type: String, required: true, trim: true },
+    middlename: { type: String, trim: true },
+    lastname: { type: String, trim: true },
+    number: { type: String, trim: true },
+    country: { type: String, trim: true, default: "Nigeria" },
+    status: {
+      type: String,
+      enum: ["active", "suspended", "banned"],
+      default: "active",
+    },
+    kycStatus: {
+      type: String,
+      enum: ["unverified", "verified", "rejected", "pending"],
+      default: "unverified",
+    },
+    totalisting: {
+      type: Number,
+      default: 0,
+    },
+    averageRating: {
+      type: Number,
+      default: 0,
+    },
+    role: {
+      type: String,
+      required: true,
+      enum: ["User", "Agent", "Admin"],
+    },
+    favoriteListings: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Property",
+      },
+    ],
+    password: { type: String },
+    profilePhoto: {
+      type: String,
+      default: "https://robohash.org/david",
+    },
   },
   {
     timestamps: true,

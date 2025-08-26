@@ -1,5 +1,4 @@
-
-import streamifier from 'streamifier'
+import streamifier from "streamifier";
 import multer from "multer";
 import cloudinary from "../config/cloudinary.js";
 
@@ -8,17 +7,28 @@ export const upload = multer({ storage: multer.memoryStorage() });
 export const uploadToCloudinary = (fileBuffer) => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder: "projects" },
+      { folder: "properties" },
       (error, result) => {
         if (error) {
           console.error("Cloudinary upload error:", error);
           reject(error);
         } else {
-          console.log("Cloudinary upload success:", result.secure_url);
-          resolve(result.secure_url);
+          resolve({
+            url: result.secure_url,
+            public_id: result.public_id,
+          });
         }
       }
     );
     streamifier.createReadStream(fileBuffer).pipe(stream);
   });
+};
+
+export const getPublicIdFromUrl = (url) => {
+  if (!url) return null;
+  const parts = url.split("/");
+  const filename = parts.pop();
+  const folder = parts.pop();
+  const publicId = `${folder}/${filename.split(".")[0]}`;
+  return publicId;
 };

@@ -5,7 +5,12 @@ import cookieParser from "cookie-parser";
 import contactRoute from "./routes/contactRoute.js";
 import authRoute from "./routes/authRoute.js";
 import reviewRoute from "./routes/reviewRoute.js";
-import projectRoute from "./routes/projectRoute.js";
+import lisitingRoute from "./routes/lisitingRoute.js";
+import wishlistRoute from "./routes/wishlistRoute.js";
+import agentRoute from "./routes/agentRoute.js";
+import enquiryRoute from "./routes/enquiryRoute.js";
+import statisticsRoute from "./routes/statisticsRoute.js";
+import userRoute from "./routes/userRoute.js";
 import connectToDB from "./library/mongodb.js";
 dotenv.config();
 
@@ -40,12 +45,15 @@ app.get("/", (request, response) => {
 });
 app.use("/api/contact", contactRoute);
 app.use("/api/auth", authRoute);
-app.use("/api/review", reviewRoute);
-app.use("/api/project", projectRoute);
-
+app.use("/api/reviews", reviewRoute);
+app.use("/api/wishlist", wishlistRoute);
+app.use("/api/listing", lisitingRoute);
+app.use("/api/agent", agentRoute);
+app.use("/api/enquiry", enquiryRoute);
+app.use("/api/user", userRoute);
+app.use("/api/statistics", statisticsRoute);
 
 connectToDB();
 app.listen(process.env.PORT, () =>
   console.log(`Listening on PORT ${process.env.PORT}`)
 );
-

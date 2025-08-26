@@ -279,19 +279,19 @@ router.post("/email/change", async (req, res) => {
 });
 
 router.post("/name/change", async (req, res) => {
-  const { name, email } = req.body;
+  const { firstname, lastname, email } = req.body;
 
-  if (!name || !email) {
+  if (!firstname || !lastname || !email) {
     return res.status(400).json({
       error: true,
-      message: "Name and email are required to update the name.",
+      message: "Name and email are required.",
     });
   }
 
   try {
     const updatedUser = await User.findOneAndUpdate(
       { email: email },
-      { $set: { fullname: name } },
+      { $set: { firstname: firstname, lastname: lastname } },
       { new: true }
     );
 
@@ -306,7 +306,8 @@ router.post("/name/change", async (req, res) => {
     return res.status(200).json({
       error: false,
       message: "Name updated successfully!",
-      name,
+      firstname,
+      lastname,
     });
   } catch (err) {
     console.error("Error updating name:", err);
@@ -458,7 +459,7 @@ router.post("/upload-avatar", upload.single("avatar"), async (req, res) => {
 });
 
 router.post("/signup", async (req, res) => {
-  const { firstname, lastname, phoneNumber, email, password, type } = req.body;
+  const { firstname, lastname, phoneNumber, email, password, role } = req.body;
   try {
     const userExists = await User.findOne({ email });
     if (userExists)
@@ -481,7 +482,7 @@ router.post("/signup", async (req, res) => {
         email: email,
         password: hashPassword,
         country: country,
-        type: type,
+        role: role,
       });
       if (createUser)
         return res.status(201).json({

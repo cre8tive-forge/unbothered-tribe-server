@@ -2,15 +2,35 @@ import mongoose from "mongoose";
 
 const ReviewSchema = new mongoose.Schema(
   {
-    fullname: { type: String, required: true },
-    occupation: { type: String, required: true },
-    message: { type: String, required: true },
-    country: { type: String },
+    fullname: { type: String, required: true, trim: true },
+    occupation: { type: String, required: true, trim: true },
+    message: { type: String, required: true, trim: true },
+
+    reviewType: {
+      type: String,
+      enum: ["listing", "agent", "site"],
+      required: true,
+    },
+
+    property: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Property",
+    },
+    agent: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
+    rating: { type: Number, min: 1, max: 5, required: true },
+    country: { type: String, trim: true },
   },
-  {
-    timestamps: true,
-    collection: "reviews",
-  }
+  { timestamps: true, collection: "reviews" }
 );
 
-export const Reviews = mongoose.models.Reviews || mongoose.model("Reviews", ReviewSchema);
+export const Review =
+  mongoose.models.Review || mongoose.model("Review", ReviewSchema);
