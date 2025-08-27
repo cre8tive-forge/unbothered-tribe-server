@@ -4,7 +4,18 @@ import { Property } from "../models/property.js";
 const router = express.Router();
 router.get("/listings-by-month", async (req, res) => {
   try {
+    // get today's date
+    const now = new Date();
+    // get date 6 months ago
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(now.getMonth() - 5); // includes current month, so -5 not -6
+
     const listings = await Property.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: sixMonthsAgo }, // only last 6 months
+        },
+      },
       {
         $group: {
           _id: {
@@ -37,4 +48,5 @@ router.get("/listings-by-month", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch listing statistics" });
   }
 });
+
 export default router;

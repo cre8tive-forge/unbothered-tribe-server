@@ -226,6 +226,7 @@ router.post("/favorites/add", verifyToken, async (req, res) => {
       });
     } else {
       user.favoriteListings.push(listingId);
+      user.updatedAt = Date.now();
       await user.save();
       res.status(200).json({
         error: false,

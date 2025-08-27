@@ -169,7 +169,7 @@ router.post("/verifytoken", async (req, res) => {
   }
 });
 
-router.get("/logout", async (req, res) => {
+router.post("/logout", async (req, res) => {
   res.clearCookie("auth_token", {
     httpOnly: true,
     sameSite: "None",

@@ -7,6 +7,7 @@ const enquirySchema = new mongoose.Schema(
     number: { type: String, required: true, trim: true },
     agentName: { type: String, required: true, trim: true },
     agentImage: { type: String, required: true, trim: true },
+    medium: { type: String, required: true, trim: true },
     isRead: { type: Boolean, default: false },
     message: { type: String, required: true, trim: true },
     propertyId: {

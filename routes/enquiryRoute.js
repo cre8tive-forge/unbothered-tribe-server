@@ -6,7 +6,7 @@ import verifyToken from "../middleware/verifyToken.js";
 
 const router = express.Router();
 router.post("/store", async (req, res) => {
-  const { name, email, number, message, listingId } = req.body;
+  const { name, email, number, message, listingId, medium } = req.body;
 
   try {
     const listing = await Property.findById(listingId);
@@ -30,6 +30,7 @@ router.post("/store", async (req, res) => {
     await Enquiry.create({
       name,
       email,
+      medium,
       number,
       message,
       propertyId: listing._id,
