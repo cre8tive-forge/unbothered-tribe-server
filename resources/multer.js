@@ -23,12 +23,3 @@ export const uploadToCloudinary = (fileBuffer) => {
     streamifier.createReadStream(fileBuffer).pipe(stream);
   });
 };
-
-export const getPublicIdFromUrl = (url) => {
-  if (!url) return null;
-  const parts = url.split("/");
-  const filename = parts.pop();
-  const folder = parts.pop();
-  const publicId = `${folder}/${filename.split(".")[0]}`;
-  return publicId;
-};

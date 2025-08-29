@@ -3,6 +3,7 @@ import { Property } from "../models/property.js";
 import { Enquiry } from "../models/enquiries.js";
 import { User } from "../models/users.js";
 import verifyToken from "../middleware/verifyToken.js";
+import { Timestamp } from "../models/timestamps.js";
 
 const router = express.Router();
 router.post("/store", async (req, res) => {
@@ -39,6 +40,15 @@ router.post("/store", async (req, res) => {
       agentId: agent._id,
       country,
     });
+    await Timestamp.findOneAndUpdate(
+      { type: "enquiry" },
+      { $set: { updatedAt: Date.now() } },
+      {
+        new: true,
+        upsert: true,
+      }
+    );
+
     return res.status(200).json({
       error: false,
       message: "Your enquiry has been successfully sent!",
@@ -63,37 +73,26 @@ router.get("/fetch", verifyToken, async (req, res) => {
     });
   }
 });
-
-router.get("/last-updated", verifyToken, async (req, res) => {
-  try {
-    const latest = await Enquiry.findOne().sort({ createdAt: -1 });
-    res.json({ lastUpdated: latest?.updatedAt?.getTime() || Date.now() });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-});
 router.post("/delete", verifyToken, async (req, res) => {
   const { enquiryId } = req.body;
   try {
-    const deletedEnquiry = await Enquiry.findByIdAndDelete(enquiryId);
-
-    if (!deletedEnquiry) {
+    const enquiryToDelete = await Enquiry.findByIdAndDelete(enquiryId);
+    if (!enquiryToDelete) {
       return res.status(404).json({
         error: true,
         message: "The requested enquiry could not be found.",
       });
     }
-
-    const latestEnquiry = await Enquiry.findOne().sort({ createdAt: -1 });
-    if (latestEnquiry) {
-      latestEnquiry.updatedAt = new Date();
-      await latestEnquiry.save();
-    }
+    await Timestamp.findOneAndUpdate(
+      { type: "enquiry" },
+      { updatedAt: Date.now() },
+      { new: true }
+    );
     const enquiries = await Enquiry.find().sort({ createdAt: -1 });
     res.status(200).json({
       error: false,
       enquiries,
-      lastUpdated: latestEnquiry ? latestEnquiry.updatedAt : Date.now(),
+      lastUpdated: Date.now(),
     });
   } catch (error) {
     console.error(`Enquiry delete error:`, error);
@@ -118,17 +117,16 @@ router.post("/mark-read", verifyToken, async (req, res) => {
         message: "The requested enquiry could not be found.",
       });
     }
-
-    const latestEnquiry = await Enquiry.findOne().sort({ createdAt: -1 });
-    if (latestEnquiry) {
-      latestEnquiry.updatedAt = new Date();
-      await latestEnquiry.save();
-    }
+    await Timestamp.findOneAndUpdate(
+      { type: "enquiry" },
+      { updatedAt: Date.now() },
+      { new: true }
+    );
 
     res.status(200).json({
       error: false,
       message: "Enquiry marked as read.",
-      lastUpdated: latestEnquiry ? latestEnquiry.updatedAt : Date.now(),
+      lastUpdated: Date.now(),
     });
   } catch (error) {
     console.error("Failed to mark enquiry as read:", error);

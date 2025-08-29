@@ -48,6 +48,8 @@ const propertySchema = new mongoose.Schema(
     },
     isFeatured: { type: Boolean, default: false },
     views: { type: Number, default: 0 },
+    averageRating: { type: Number, default: 0 },
+    ratingCount: { type: Number, default: 0 },
     coordinates: {
       lat: Number,
       lng: Number,

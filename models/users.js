@@ -13,7 +13,9 @@ const userSchema = new mongoose.Schema(
     middlename: { type: String, trim: true },
     lastname: { type: String, trim: true },
     number: { type: String, trim: true },
+    bio: { type: String },
     country: { type: String, trim: true, default: "Nigeria" },
+
     status: {
       type: String,
       enum: ["active", "suspended", "banned"],

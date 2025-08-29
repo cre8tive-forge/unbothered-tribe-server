@@ -10,6 +10,7 @@ import wishlistRoute from "./routes/wishlistRoute.js";
 import agentRoute from "./routes/agentRoute.js";
 import enquiryRoute from "./routes/enquiryRoute.js";
 import statisticsRoute from "./routes/statisticsRoute.js";
+import timestampRoute from "./routes/timestampRoute.js";
 import userRoute from "./routes/userRoute.js";
 import connectToDB from "./library/mongodb.js";
 dotenv.config();
@@ -52,6 +53,7 @@ app.use("/api/agent", agentRoute);
 app.use("/api/enquiry", enquiryRoute);
 app.use("/api/user", userRoute);
 app.use("/api/statistics", statisticsRoute);
+app.use("/api/timestamp", timestampRoute);
 
 connectToDB();
 app.listen(process.env.PORT, () =>

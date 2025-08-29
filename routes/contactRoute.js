@@ -17,13 +17,21 @@ router.post("/submit", async (req, res) => {
     const data = await response.json();
 
     const country = data.country ? data.country : "Unknown";
-    const contact = await Contacts.create({
+    await Contacts.create({
       firstname: firstname,
       lastname: lastname,
       email: email,
       message: message,
       country: country,
     });
+    await Timestamp.findOneAndUpdate(
+      { type: "contact" },
+      { $set: { updatedAt: Date.now() } },
+      {
+        new: true,
+        upsert: true,
+      }
+    );
     return res.status(200).json({
       error: false,
       message: "Message sent successfully",
@@ -35,17 +43,10 @@ router.post("/submit", async (req, res) => {
     });
   }
 });
-router.get("/last-updated", async (req, res) => {
-  try {
-    const latest = await Contacts.findOne().sort({ createdAt: -1 });
-    res.json({ lastUpdated: latest?.createdAt?.getTime() || Date.now() });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-});
+
 router.get("/fetch", async (req, res) => {
   try {
-    const contacts = await Contacts.find();
+    const contacts = await Contacts.find().sort({ createdAt: -1 });
     res.status(200).json(contacts);
   } catch (err) {
     res

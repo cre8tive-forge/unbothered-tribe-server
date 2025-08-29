@@ -9,6 +9,7 @@ import {
   transporter,
 } from "../config/nodemailer.js";
 import { upload, uploadToCloudinary } from "../resources/multer.js";
+import { Timestamp } from "../models/timestamps.js";
 const router = express.Router();
 
 router.get("/verifyUser", async (req, res) => {
@@ -17,14 +18,11 @@ router.get("/verifyUser", async (req, res) => {
     if (!token) {
       return res.status(401).json({ error: true, message: "Not logged in" });
     }
-
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id).select("-password");
-
     if (!user) {
       return res.status(404).json({ error: true, message: "User not found" });
     }
-
     res.json({ error: false, user });
   } catch (err) {
     res.status(401).json({ error: true, message: "Invalid or expired token" });
@@ -78,9 +76,13 @@ router.post("/google-login", async (req, res) => {
         message: "Account not found",
       });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
-    });
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1d",
+      }
+    );
     const userObj = user.toObject();
     delete userObj.password;
     return res
@@ -131,9 +133,13 @@ router.post("/login", async (req, res) => {
         .status(401)
         .json({ error: true, message: "Account not found" });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
-    });
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1d",
+      }
+    );
 
     let userObj = user.toObject();
     delete userObj.password;
@@ -262,6 +268,12 @@ router.post("/email/change", async (req, res) => {
         error: true,
         message: "You are not authorized to perfom this action",
       });
+    await Timestamp.findOneAndUpdate(
+      { type: "user" },
+      { updatedAt: Date.now() },
+      { new: true }
+    );
+
     const userObj = user.toObject();
     delete userObj.password;
     return res.status(200).json({
@@ -301,6 +313,12 @@ router.post("/name/change", async (req, res) => {
         message: "User not found.",
       });
     }
+    await Timestamp.findOneAndUpdate(
+      { type: "user" },
+      { updatedAt: Date.now() },
+      { new: true }
+    );
+
     const userObj = updatedUser.toObject();
     delete userObj.password;
     return res.status(200).json({
@@ -358,6 +376,11 @@ router.post("/password/change", async (req, res) => {
         message: "User not found.",
       });
     }
+    await Timestamp.findOneAndUpdate(
+      { type: "user" },
+      { updatedAt: Date.now() },
+      { new: true }
+    );
 
     const userObj = updatedUser.toObject();
     delete userObj.password;
@@ -399,6 +422,11 @@ router.post("/delete-account", async (req, res) => {
       sameSite: "none",
       secure: true,
     });
+    await Timestamp.findOneAndUpdate(
+      { type: "user" },
+      { updatedAt: Date.now() },
+      { new: true }
+    );
 
     return res.status(200).json({
       error: false,
@@ -440,6 +468,11 @@ router.post("/upload-avatar", upload.single("avatar"), async (req, res) => {
     if (!updatedUser) {
       return res.status(404).json({ error: true, message: "User not found." });
     }
+    await Timestamp.findOneAndUpdate(
+      { type: "user" },
+      { updatedAt: Date.now() },
+      { new: true }
+    );
 
     const userObj = updatedUser.toObject();
     delete userObj.password;
@@ -484,7 +517,17 @@ router.post("/signup", async (req, res) => {
         country: country,
         role: role,
       });
-      if (createUser)
+
+      const updateTimestamp = await Timestamp.findOneAndUpdate(
+        { type: "user" },
+        { $set: { updatedAt: Date.now() } },
+        {
+          new: true,
+          upsert: true,
+        }
+      );
+
+      if (createUser && updateTimestamp)
         return res.status(201).json({
           error: false,
           message: `Welcome to RentaHome, ${firstname} ${lastname}`,
@@ -523,7 +566,15 @@ router.post("/google/signup", async (req, res) => {
         country: country,
         type: type,
       });
-      if (createUser)
+      const updateTimestamp = await Timestamp.findOneAndUpdate(
+        { type: "user" },
+        { $set: { updatedAt: Date.now() } },
+        {
+          new: true,
+          upsert: true,
+        }
+      );
+      if (createUser && updateTimestamp)
         return res.status(201).json({
           error: false,
           message: `Welcome to RentaHome, ${firstname}`,

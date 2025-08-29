@@ -1,16 +1,15 @@
 import express from "express";
-import {
-  getPublicIdFromUrl,
-  upload,
-  uploadToCloudinary,
-} from "../resources/multer.js";
+import { upload, uploadToCloudinary } from "../resources/multer.js";
 import { Property } from "../models/property.js";
 import verifyToken from "../middleware/verifyToken.js";
 import cloudinary from "../config/cloudinary.js";
 import { User } from "../models/users.js";
 import { Review } from "../models/reviews.js";
-const router = express.Router();
+import { Enquiry } from "../models/enquiries.js";
+import mongoose from "mongoose";
+import { Timestamp } from "../models/timestamps.js";
 
+const router = express.Router();
 router.post("/store", verifyToken, upload.array("images"), async (req, res) => {
   const userId = req.user.id;
   try {
@@ -40,7 +39,6 @@ router.post("/store", verifyToken, upload.array("images"), async (req, res) => {
       req.files.map((file) => uploadToCloudinary(file.buffer))
     );
 
-    console.log(userId);
     const newProperty = await Property.create({
       title,
       purpose,
@@ -62,7 +60,22 @@ router.post("/store", verifyToken, upload.array("images"), async (req, res) => {
       instagramVideo,
       virtualTour,
       images: imageUrls,
+      averageRating: 0,
+      ratingCount: 0,
     });
+    await User.findOneAndUpdate(
+      { _id: userId },
+      { $inc: { totalisting: 1 } },
+      { new: true }
+    );
+    await Timestamp.findOneAndUpdate(
+      { type: "listing" },
+      { $set: { updatedAt: Date.now() } },
+      {
+        new: true,
+        upsert: true,
+      }
+    );
 
     return res.status(201).json({
       error: false,
@@ -81,7 +94,6 @@ router.post("/store", verifyToken, upload.array("images"), async (req, res) => {
 router.get("/fetch", async (req, res) => {
   try {
     const listings = await Property.find().sort({ createdAt: -1 });
-
     res.status(200).json(listings);
   } catch (err) {
     res.status(500).json({
@@ -90,60 +102,89 @@ router.get("/fetch", async (req, res) => {
     });
   }
 });
-
-router.get("/last-updated", async (req, res) => {
+router.get("/fetch/dashboard", verifyToken, async (req, res) => {
   try {
-    const latest = await Property.findOne().sort({ createdAt: -1 });
-    res.json({ lastUpdated: latest?.createdAt?.getTime() || Date.now() });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    const listings = await Property.find().sort({ createdAt: -1 });
+    res.status(200).json(listings);
+  } catch (err) {
+    res.status(500).json({
+      error: true,
+      message: "Failed to fetch listings.",
+    });
   }
 });
-
 router.get("/fetch/:id", async (req, res) => {
   const { id } = req.params;
+
   try {
-    const listing = await Property.findOne({ _id: id });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res
+        .status(400)
+        .json({ error: true, message: "Invalid listing ID." });
+    }
+
+    const listing = await Property.findOneAndUpdate(
+      { _id: id },
+      { $inc: { views: 1 } },
+      { new: true }
+    );
     if (!listing) {
       return res
         .status(404)
         .json({ error: true, message: "Listing record not found." });
     }
-    const agent = await User.findById(listing.createdBy);
+
+    const agent = await User.findById(listing.createdBy).select(
+      "firstname lastname profilePhoto role"
+    );
     if (!agent) {
       return res
         .status(401)
         .json({ error: true, message: "Unidentified agent" });
     }
-    const reviews = await Review.find({ property: listing._id }).sort({
-      createdAt: -1,
-    });
 
-    res.status(200).json({ listing, agent, reviews });
+    const reviews = await Review.find({ property: listing._id })
+      .populate("user", "profilePhoto firstname lastname role")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      error: false,
+      listing,
+      agent,
+      reviews,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    console.error("Error fetching listing:", error);
+    res.status(500).json({
+      error: true,
+      message: "Unable to fetch listing. Please try again.",
+    });
   }
 });
-
-router.get("/last-updated/:id", async (req, res) => {
-  const { id } = req.params;
-  console.log({ id });
+router.put("/:id/status", verifyToken, async (req, res) => {
   try {
-    const listing = await Property.findOne({ _id: id });
+    const listingId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(listingId)) {
+      return res
+        .status(400)
+        .json({ error: true, message: "Invalid listing ID." });
+    }
+
+    const listing = await Property.findById(listingId);
     if (!listing) {
       return res
         .status(404)
-        .json({ error: true, message: "Listing record not found." });
+        .json({ error: true, message: "Listing not found." });
     }
-    res.json({ lastUpdated: listing?.updatedAt?.getTime() || Date.now() });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-});
+    if (
+      listing.createdBy.toString() !== req.user.id &&
+      req.user.role !== "Admin"
+    ) {
+      return res
+        .status(403)
+        .json({ error: true, message: "Not authorized to update status." });
+    }
 
-router.put("/:id/status", verifyToken, async (req, res, next) => {
-  try {
-    const listingId = req.params.id;
     const { status } = req.body;
     const validStatuses = ["active", "archived", "sold", "rented", "pending"];
     if (!validStatuses.includes(status)) {
@@ -158,26 +199,29 @@ router.put("/:id/status", verifyToken, async (req, res, next) => {
       { new: true }
     );
 
-    if (!updatedListing) {
-      return res
-        .status(404)
-        .json({ error: true, message: "Listing not found." });
-    }
+    await Timestamp.findOneAndUpdate(
+      { type: "listing" },
+      { updatedAt: Date.now() },
+      { new: true }
+    );
 
-    res.status(200).json({
+    return res.status(200).json({
       error: false,
       message: "Listing status updated successfully.",
       listing: updatedListing,
     });
   } catch (err) {
-    next(err);
+    console.error("Error updating listing status:", err);
+    res.status(500).json({
+      error: true,
+      message: "Unable to update listing status. Please try again.",
+      details: err.message,
+    });
   }
 });
-
-router.post("/delete", verifyToken, async (req, res, next) => {
+router.post("/delete", verifyToken, async (req, res) => {
   try {
     const { listingId } = req.body;
-
     const listingToDelete = await Property.findById(listingId);
     if (!listingToDelete) {
       return res
@@ -185,17 +229,29 @@ router.post("/delete", verifyToken, async (req, res, next) => {
         .json({ error: true, message: "Listing not found." });
     }
 
-    const publicIds = listingToDelete.images.map(getPublicIdFromUrl);
-    await Promise.all(
-      publicIds.map((publicId) => cloudinary.uploader.destroy(publicId))
-    );
-    const deletedListing = await Property.findByIdAndDelete(listingId);
+    const publicIds = listingToDelete.images.map((img) => img.public_id);
+    await Promise.all(publicIds.map((id) => cloudinary.uploader.destroy(id)));
 
-    const latestListing = await Property.findOne().sort({ createdAt: -1 });
-    if (latestListing) {
-      latestListing.updatedAt = new Date();
-      await latestListing.save();
-    }
+    await User.findOneAndUpdate(
+      { _id: listingToDelete.createdBy, totalisting: { $gt: 0 } },
+      { $inc: { totalisting: -1 } },
+      { new: true }
+    );
+
+    await Enquiry.deleteMany({ propertyId: listingId });
+    await Review.deleteMany({ property: listingId });
+
+    await User.updateMany(
+      { favoriteListings: { $in: [listingId] } },
+      { $pull: { favoriteListings: listingId } }
+    );
+    await Property.findByIdAndDelete(listingId);
+
+    await Timestamp.findOneAndUpdate(
+      { type: "listing" },
+      { updatedAt: Date.now() },
+      { new: true }
+    );
     const listings = await Property.find().sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -205,38 +261,11 @@ router.post("/delete", verifyToken, async (req, res, next) => {
       lastUpdated: Date.now(),
     });
   } catch (err) {
-    next(err);
-  }
-});
-
-router.post("/favorites/add", verifyToken, async (req, res) => {
-  const userId = req.user.id;
-  const { listingId } = req.body;
-
-  try {
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: true, message: "User not found." });
-    }
-
-    if (user.favoriteListings.includes(listingId)) {
-      return res.status(401).json({
-        error: true,
-        message: "Listing already saved to your wishlist",
-      });
-    } else {
-      user.favoriteListings.push(listingId);
-      user.updatedAt = Date.now();
-      await user.save();
-      res.status(200).json({
-        error: false,
-        message: "Listing added to favorites successfully.",
-      });
-    }
-  } catch (err) {
+    console.error("Error deleting listing:", err);
     res.status(500).json({
-      message: "Unable to add listing to favourites",
-      error: err.message,
+      error: true,
+      message: "Unable to delete listing. Please try again.",
+      details: err.message,
     });
   }
 });

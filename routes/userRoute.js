@@ -1,6 +1,7 @@
 import express from "express";
 import verifyToken from "../middleware/verifyToken.js";
 import { User } from "../models/users.js";
+import { Timestamp } from "../models/timestamps.js";
 
 const router = express.Router();
 router.get("/fetch", verifyToken, async (req, res) => {
@@ -21,14 +22,6 @@ router.get("/fetch", verifyToken, async (req, res) => {
       error: true,
       message: "Failed to fetch users.",
     });
-  }
-});
-router.get("/last-updated", verifyToken, async (req, res) => {
-  try {
-    const latest = await User.findOne().sort({ createdAt: -1 });
-    res.json({ lastUpdated: latest?.updatedAt?.getTime() || Date.now() });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
   }
 });
 router.post("/edit/save", verifyToken, async (req, res) => {
@@ -71,7 +64,7 @@ router.post("/edit/save", verifyToken, async (req, res) => {
       }
     }
 
-    const updatedUser = await User.findByIdAndUpdate(
+    await User.findByIdAndUpdate(
       userId,
       {
         firstname,
@@ -85,30 +78,23 @@ router.post("/edit/save", verifyToken, async (req, res) => {
       { new: true }
     );
 
-    if (updatedUser) {
-      const latestUser = await User.findOne().sort({ createdAt: -1 });
-      if (latestUser) {
-        latestUser.updatedAt = new Date();
-        await latestUser.save();
-      }
-      const currentUserId = req.user.id;
-      const users = await User.find({ _id: { $ne: currentUserId } })
-        .sort({
-          createdAt: -1,
-        })
-        .select("-password");
-      res.status(200).json({
-        error: false,
-        users,
-        message: "User details updated successfully",
-        lastUpdated: latestUser ? latestUser.updatedAt : Date.now(),
-      });
-    } else {
-      return res.status(404).json({
-        error: true,
-        message: "User not found for update.",
-      });
-    }
+    await Timestamp.findOneAndUpdate(
+      { type: "user" },
+      { updatedAt: Date.now() },
+      { new: true }
+    );
+    const currentUserId = req.user.id;
+    const users = await User.find({ _id: { $ne: currentUserId } })
+      .sort({
+        createdAt: -1,
+      })
+      .select("-password");
+    res.status(200).json({
+      error: false,
+      users,
+      message: "User details updated successfully",
+      lastUpdated: Date.now(),
+    });
   } catch (error) {
     console.error("Failed to edit user details:", error);
     res.status(500).json({
@@ -127,11 +113,11 @@ router.post("/delete", verifyToken, async (req, res) => {
         message: "The requested user could not be found.",
       });
     }
-    const latestUser = await User.findOne().sort({ createdAt: -1 });
-    if (latestUser) {
-      latestUser.updatedAt = new Date();
-      await latestUser.save();
-    }
+    await Timestamp.findOneAndUpdate(
+      { type: "user" },
+      { updatedAt: Date.now() },
+      { new: true }
+    );
     const currentUserId = req.user.id;
     const users = await User.find({ _id: { $ne: currentUserId } })
       .sort({
@@ -142,7 +128,7 @@ router.post("/delete", verifyToken, async (req, res) => {
       error: false,
       users,
       message: "User deleted successfully",
-      lastUpdated: latestUser ? latestUser.updatedAt : Date.now(),
+      lastUpdated: Date.now(),
     });
   } catch (error) {
     console.error(`User delete error:`, error);
