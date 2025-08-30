@@ -2,6 +2,8 @@ import express from "express";
 import verifyToken from "../middleware/verifyToken.js";
 import { User } from "../models/users.js";
 import { Timestamp } from "../models/timestamps.js";
+import { Enquiry } from "../models/enquiries.js";
+import { Review } from "../models/reviews.js";
 
 const router = express.Router();
 router.get("/fetch", verifyToken, async (req, res) => {
@@ -84,7 +86,10 @@ router.post("/edit/save", verifyToken, async (req, res) => {
       { new: true }
     );
     const currentUserId = req.user.id;
-    const users = await User.find({ _id: { $ne: currentUserId } })
+    const users = await User.find({
+      role: "User",
+      _id: { $ne: currentUserId },
+    })
       .sort({
         createdAt: -1,
       })
@@ -106,6 +111,8 @@ router.post("/edit/save", verifyToken, async (req, res) => {
 router.post("/delete", verifyToken, async (req, res) => {
   const { userId } = req.body;
   try {
+    await Review.deleteMany({ user: userId });
+
     const deletedUser = await User.findByIdAndDelete(userId);
     if (!deletedUser) {
       return res.status(404).json({
@@ -113,17 +120,16 @@ router.post("/delete", verifyToken, async (req, res) => {
         message: "The requested user could not be found.",
       });
     }
-    await Timestamp.findOneAndUpdate(
-      { type: "user" },
-      { updatedAt: Date.now() },
-      { new: true }
+    await Timestamp.updateMany(
+      { type: { $in: ["user", "review"] } },
+      { $set: { updatedAt: Date.now() } }
     );
+
     const currentUserId = req.user.id;
     const users = await User.find({ _id: { $ne: currentUserId } })
-      .sort({
-        createdAt: -1,
-      })
+      .sort({ createdAt: -1 })
       .select("-password");
+
     res.status(200).json({
       error: false,
       users,
@@ -131,11 +137,12 @@ router.post("/delete", verifyToken, async (req, res) => {
       lastUpdated: Date.now(),
     });
   } catch (error) {
-    console.error(`User delete error:`, error);
+    console.error("User delete error:", error);
     res.status(500).json({
       message: "Unable to delete User. Please try again later.",
       error: error.message,
     });
   }
 });
+
 export default router;

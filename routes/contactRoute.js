@@ -1,10 +1,10 @@
 import express from "express";
-import { Contacts } from "../models/contacts.js";
+import { Contact } from "../models/contacts.js";
 const router = express.Router();
 import axios from "axios";
 
 router.post("/submit", async (req, res) => {
-  const { firstname, lastname, email, message, captchaToken } = req.body;
+  const { fullname, number, email, message, captchaToken } = req.body;
 
   try {
     const secretKey = process.env.RECAPTCHA_SECRET_KEY;
@@ -17,12 +17,11 @@ router.post("/submit", async (req, res) => {
     const data = await response.json();
 
     const country = data.country ? data.country : "Unknown";
-    await Contacts.create({
-      firstname: firstname,
-      lastname: lastname,
-      email: email,
-      message: message,
-      country: country,
+    await Contact.create({
+      fullname,
+      email,number,
+      message,
+      country,
     });
     await Timestamp.findOneAndUpdate(
       { type: "contact" },
@@ -46,7 +45,7 @@ router.post("/submit", async (req, res) => {
 
 router.get("/fetch", async (req, res) => {
   try {
-    const contacts = await Contacts.find().sort({ createdAt: -1 });
+    const contacts = await Contact.find().sort({ createdAt: -1 });
     res.status(200).json(contacts);
   } catch (err) {
     res

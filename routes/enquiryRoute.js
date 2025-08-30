@@ -24,6 +24,19 @@ router.post("/store", async (req, res) => {
         message: "The requested property listing agent could not be found.",
       });
     }
+
+  const existingEnquiry = await Enquiry.findOne({
+    $or: [{ email: email }, { number: number }],
+  });
+
+  if (existingEnquiry) {
+    return res.status(409).json({
+      error: true,
+      message: "You already have an existing enquiry on this property.",
+    });
+  }
+
+
     const ipAddress = req.ip;
     const response = await fetch(`http://ip-api.com/json/${ipAddress}`);
     const data = await response.json();
@@ -35,7 +48,7 @@ router.post("/store", async (req, res) => {
       number,
       message,
       propertyId: listing._id,
-      agentName: `${agent.firstname} ${agent.lastname}`,
+      agentName: `${agent.firstname} ${agent.lastname || ""}`,
       agentImage: agent.profilePhoto,
       agentId: agent._id,
       country,

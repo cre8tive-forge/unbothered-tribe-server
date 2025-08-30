@@ -530,7 +530,7 @@ router.post("/signup", async (req, res) => {
       if (createUser && updateTimestamp)
         return res.status(201).json({
           error: false,
-          message: `Welcome to RentaHome, ${firstname} ${lastname}`,
+          message: `Welcome to HouseHunter, ${firstname} ${lastname}`,
         });
     }
   } catch (error) {
@@ -542,7 +542,7 @@ router.post("/signup", async (req, res) => {
 });
 
 router.post("/google/signup", async (req, res) => {
-  const { firstname, email, type } = req.body;
+  const { firstname, email, type, role } = req.body;
   try {
     const userExists = await User.findOne({ email });
     if (userExists)
@@ -558,13 +558,11 @@ router.post("/google/signup", async (req, res) => {
       const country = data.country ? data.country : "Unknown";
 
       const createUser = await User.create({
-        firstname: firstname,
-        lastname: "",
-        number: "",
-        email: email,
-        password: "",
-        country: country,
-        type: type,
+        firstname,
+        email,
+        country,
+        type,
+        role,
       });
       const updateTimestamp = await Timestamp.findOneAndUpdate(
         { type: "user" },
@@ -577,10 +575,11 @@ router.post("/google/signup", async (req, res) => {
       if (createUser && updateTimestamp)
         return res.status(201).json({
           error: false,
-          message: `Welcome to RentaHome, ${firstname}`,
+          message: `Welcome to HouseHunter, ${firstname}`,
         });
     }
   } catch (error) {
+    console.log(error);
     return res.status(500).json({
       error: true,
       message: "Unable to create your account. Please try again",

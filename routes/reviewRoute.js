@@ -3,6 +3,7 @@ import { Review } from "../models/reviews.js";
 import verifyToken from "../middleware/verifyToken.js";
 import { Property } from "../models/property.js";
 import { Timestamp } from "../models/timestamps.js";
+import mongoose from "mongoose";
 
 const router = express.Router();
 
@@ -93,6 +94,104 @@ router.get("/fetch/user", verifyToken, async (req, res) => {
     res.status(500).json({
       error: true,
       message: "Failed to fetch reviews.",
+    });
+  }
+});
+router.get("/fetch/admin", verifyToken, async (req, res) => {
+  try {
+    const reviews = await Review.find()
+      .populate("property", "title price images _id")
+      .populate("agent", "firstname lastname email country _id")
+      .populate("user", "firstname lastname email country _id");
+
+    res.status(200).json(reviews);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      error: true,
+      message: "Failed to fetch reviews.",
+    });
+  }
+});
+router.post("/delete", verifyToken, async (req, res) => {
+  const { reviewId } = req.body;
+  try {
+    if (!mongoose.Types.ObjectId.isValid(reviewId)) {
+      return res
+        .status(400)
+        .json({ error: true, message: "Invalid review ID." });
+    }
+    const reviewToDelete = await Review.findByIdAndDelete(reviewId);
+    if (!reviewToDelete) {
+      return res.status(404).json({
+        error: true,
+        message: "The requested review could not be found.",
+      });
+    }
+    await Timestamp.findOneAndUpdate(
+      { type: "review" },
+      { updatedAt: Date.now() },
+      { new: true }
+    );
+    const reviews = await Review.find().sort({ createdAt: -1 });
+    res.status(200).json({
+      error: false,
+      reviews,
+      lastUpdated: Date.now(),
+    });
+  } catch (error) {
+    console.error(`Review delete error:`, error);
+    res.status(500).json({
+      message: "Unable to delete review. Please try again later.",
+      error: error.message,
+    });
+  }
+});
+
+router.put("/status", verifyToken, async (req, res) => {
+  try {
+    const { reviewId, status } = req.body;
+    if (!mongoose.Types.ObjectId.isValid(reviewId)) {
+      return res
+        .status(400)
+        .json({ error: true, message: "Invalid review ID." });
+    }
+    const reviewExists = await Review.findById(reviewId);
+    if (!reviewExists) {
+      return res
+        .status(404)
+        .json({ error: true, message: "Review not found." });
+    }
+    if (req.user.role !== "Admin") {
+      return res
+        .status(403)
+        .json({
+          error: true,
+          message: "Not authorized to update review status.",
+        });
+    }
+    const reviews = await Review.findByIdAndUpdate(
+      reviewId,
+      { status: status },
+      { new: true }
+    ).sort({ createdAt: -1 });
+    await Timestamp.findOneAndUpdate(
+      { type: "review" },
+      { updatedAt: Date.now() },
+      { new: true }
+    );
+    return res.status(200).json({
+      error: false,
+      message: "Review status updated successfully",
+      reviews,
+      lastUpdated: Date.now(),
+    });
+  } catch (err) {
+    console.error("Error updating review status:", err);
+    res.status(500).json({
+      error: true,
+      message: "Unable to update review status. Please try again.",
+      details: err.message,
     });
   }
 });

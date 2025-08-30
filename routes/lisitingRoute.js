@@ -1,5 +1,9 @@
 import express from "express";
-import { upload, uploadToCloudinary } from "../resources/multer.js";
+import {
+  deleteFromCloudinary,
+  upload,
+  uploadToCloudinary,
+} from "../resources/multer.js";
 import { Property } from "../models/property.js";
 import verifyToken from "../middleware/verifyToken.js";
 import cloudinary from "../config/cloudinary.js";
@@ -12,6 +16,11 @@ import { Timestamp } from "../models/timestamps.js";
 const router = express.Router();
 router.post("/store", verifyToken, upload.array("images"), async (req, res) => {
   const userId = req.user.id;
+  if (req.user.role === "User") {
+    return res
+      .status(403)
+      .json({ error: true, message: "Not authorized to edit this listing" });
+  }
   try {
     const {
       title,
@@ -93,7 +102,9 @@ router.post("/store", verifyToken, upload.array("images"), async (req, res) => {
 });
 router.get("/fetch", async (req, res) => {
   try {
-    const listings = await Property.find().sort({ createdAt: -1 });
+    const listings = await Property.find({ status: "active" }).sort({
+      createdAt: -1,
+    });
     res.status(200).json(listings);
   } catch (err) {
     res.status(500).json({
@@ -104,7 +115,9 @@ router.get("/fetch", async (req, res) => {
 });
 router.get("/fetch/dashboard", verifyToken, async (req, res) => {
   try {
-    const listings = await Property.find().sort({ createdAt: -1 });
+    const listings = await Property.find().sort({
+      createdAt: -1,
+    });
     res.status(200).json(listings);
   } catch (err) {
     res.status(500).json({
@@ -152,6 +165,38 @@ router.get("/fetch/:id", async (req, res) => {
       listing,
       agent,
       reviews,
+    });
+  } catch (error) {
+    console.error("Error fetching listing:", error);
+    res.status(500).json({
+      error: true,
+      message: "Unable to fetch listing. Please try again.",
+    });
+  }
+});
+
+router.get("/fetch/protected/:id", verifyToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res
+        .status(400)
+        .json({ error: true, message: "Invalid listing ID." });
+    }
+    if (req.user.role === "User") {
+      return res
+        .status(403)
+        .json({ error: true, message: "Not authorized to edit this listing" });
+    }
+    const listing = await Property.findById(id);
+    if (!listing) {
+      return res
+        .status(404)
+        .json({ error: true, message: "Listing record not found." });
+    }
+    res.status(200).json({
+      error: false,
+      listing,
     });
   } catch (error) {
     console.error("Error fetching listing:", error);
@@ -247,11 +292,11 @@ router.post("/delete", verifyToken, async (req, res) => {
     );
     await Property.findByIdAndDelete(listingId);
 
-    await Timestamp.findOneAndUpdate(
-      { type: "listing" },
-      { updatedAt: Date.now() },
-      { new: true }
+    await Timestamp.updateMany(
+      { type: { $in: ["user", "review", "enquiry", "listing"] } },
+      { $set: { updatedAt: Date.now() } }
     );
+
     const listings = await Property.find().sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -269,4 +314,132 @@ router.post("/delete", verifyToken, async (req, res) => {
     });
   }
 });
+
+router.put(
+  "/update/:id",
+  verifyToken,
+  upload.array("images"),
+  async (req, res) => {
+    const userId = req.user.id;
+    const listingId = req.params.id;
+
+    try {
+      const listing = await Property.findById(listingId);
+
+      if (!listing) {
+        return res.status(404).json({
+          error: true,
+          message: "Listing not found.",
+        });
+      }
+
+      if (
+        listing.createdBy.toString() !== userId &&
+        req.user.role !== "Admin" &&
+        req.user.role !== "Agent"
+      ) {
+        return res.status(403).json({
+          error: true,
+          message: "Not authorized to update this listing.",
+        });
+      }
+
+      const {
+        title,
+        purpose,
+        location,
+        category,
+        subCategory,
+        price,
+        denomination,
+        installmentPayment,
+        appendTo,
+        bedrooms,
+        bathrooms,
+        toilets,
+        areaSize,
+        description,
+        features,
+        youtubeVideo,
+        instagramVideo,
+        virtualTour,
+        existingImages,
+      } = req.body;
+
+      const parsedLocation = JSON.parse(location);
+      const parsedExistingImages = JSON.parse(existingImages || "[]");
+
+      let newImageUrls = [];
+      if (req.files && req.files.length > 0) {
+        newImageUrls = await Promise.all(
+          req.files.map((file) => uploadToCloudinary(file.buffer))
+        );
+      }
+
+      // 1. Correctly filter images to delete based on public_id
+      const imagesToDelete = listing.images.filter(
+        (img) =>
+          !parsedExistingImages.some(
+            (existingImg) => existingImg.public_id === img.public_id
+          )
+      );
+
+      if (imagesToDelete.length > 0) {
+        await Promise.all(
+          imagesToDelete.map((img) => deleteFromCloudinary(img.public_id))
+        );
+      }
+
+      // 2. Combine the kept existing images (in object format) with the new ones
+      const finalImages = [...parsedExistingImages, ...newImageUrls];
+
+      const updatedProperty = await Property.findByIdAndUpdate(
+        listingId,
+        {
+          title,
+          purpose,
+          location: parsedLocation,
+          category,
+          subCategory,
+          price,
+          denomination,
+          installmentPayment: installmentPayment === "true",
+          appendTo,
+          bedrooms,
+          bathrooms,
+          toilets,
+          areaSize,
+          description,
+          features: features,
+          youtubeVideo,
+          instagramVideo,
+          virtualTour,
+          images: finalImages, // This array now contains objects, which Mongoose expects
+        },
+        {
+          new: true,
+        }
+      );
+
+      await Timestamp.findOneAndUpdate(
+        { type: "listing" },
+        { $set: { updatedAt: Date.now() } },
+        { new: true, upsert: true }
+      );
+
+      return res.status(200).json({
+        error: false,
+        message: "Property listing updated successfully.",
+        property: updatedProperty,
+      });
+    } catch (err) {
+      console.error("Error updating property listing:", err);
+      res.status(500).json({
+        error: true,
+        message: "Unable to update property listing. Please try again.",
+        details: err.message,
+      });
+    }
+  }
+);
 export default router;

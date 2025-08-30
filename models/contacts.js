@@ -2,11 +2,12 @@ import mongoose from "mongoose";
 
 const ContactSchema = new mongoose.Schema(
   {
-    firstname: { type: String, required: true },
-    lastname: { type: String, required: true },
+    fullname: { type: String, required: true },
     email: { type: String, required: true },
+    number: { type: String, required: true },
     message: { type: String, required: true },
     country: { type: String },
+    isRead: { type: Boolean, default: false },
   },
   {
     timestamps: true,
@@ -14,4 +15,5 @@ const ContactSchema = new mongoose.Schema(
   }
 );
 
-export const Contacts = mongoose.models.Contacts || mongoose.model("Contacts", ContactSchema);
+export const Contact =
+  mongoose.models.Contact || mongoose.model("Contact", ContactSchema);

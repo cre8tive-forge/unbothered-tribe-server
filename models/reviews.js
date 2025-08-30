@@ -11,7 +11,11 @@ const ReviewSchema = new mongoose.Schema(
       enum: ["listing", "agent", "site"],
       required: true,
     },
-
+    status: {
+      type: String,
+      enum: ["pending", "published"],
+      default: "pending",
+    },
     property: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Property",
