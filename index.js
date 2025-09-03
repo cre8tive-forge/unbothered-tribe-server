@@ -11,6 +11,8 @@ import agentRoute from "./routes/agentRoute.js";
 import enquiryRoute from "./routes/enquiryRoute.js";
 import statisticsRoute from "./routes/statisticsRoute.js";
 import timestampRoute from "./routes/timestampRoute.js";
+import subscriptionRoute from "./routes/subscriptionRoute.js";
+import transactionRoute from "./routes/transactionRoute.js";
 import blogRoute from "./routes/blogRoute.js";
 import userRoute from "./routes/userRoute.js";
 import connectToDB from "./library/mongodb.js";
@@ -56,6 +58,8 @@ app.use("/api/user", userRoute);
 app.use("/api/statistics", statisticsRoute);
 app.use("/api/timestamp", timestampRoute);
 app.use("/api/blog", blogRoute);
+app.use("/api/subscribe", subscriptionRoute);
+app.use("/api/transaction", transactionRoute);
 
 connectToDB();
 app.listen(process.env.PORT, () =>

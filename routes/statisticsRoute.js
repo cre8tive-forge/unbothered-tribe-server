@@ -7,26 +7,29 @@ import { Enquiry } from "../models/enquiries.js";
 import { Contact } from "../models/contacts.js";
 
 const router = express.Router();
+
 router.get("/listing/fetch/admin", verifyToken, async (req, res) => {
   if (req.user.role !== "Admin") {
-    res.status(401).json({
+    return res.status(401).json({
       error: true,
       message: "Unauthorized access",
     });
   }
   try {
     const listings = await Property.find().sort({ updatedAt: -1 });
-    res.status(200).json(listings);
+    return res.status(200).json(listings);
   } catch (err) {
-    res.status(500).json({
+    console.error("Failed to fetch listings:", err);
+    return res.status(500).json({
       error: true,
       message: "Failed to fetch listings.",
     });
   }
 });
+
 router.get("/user/fetch/admin", verifyToken, async (req, res) => {
   if (req.user.role !== "Admin") {
-    res.status(401).json({
+    return res.status(401).json({
       error: true,
       message: "Unauthorized access",
     });
@@ -40,18 +43,19 @@ router.get("/user/fetch/admin", verifyToken, async (req, res) => {
         updatedAt: -1,
       })
       .select("-password");
-    res.status(200).json(users);
+    return res.status(200).json(users);
   } catch (err) {
     console.error("Failed to fetch users:", err);
-    res.status(500).json({
+    return res.status(500).json({
       error: true,
       message: "Failed to fetch users.",
     });
   }
 });
+
 router.get("/review/fetch/admin", verifyToken, async (req, res) => {
   if (req.user.role !== "Admin") {
-    res.status(401).json({
+    return res.status(401).json({
       error: true,
       message: "Unauthorized access",
     });
@@ -64,18 +68,19 @@ router.get("/review/fetch/admin", verifyToken, async (req, res) => {
       updatedAt: -1,
     });
 
-    res.status(200).json(reviews);
+    return res.status(200).json(reviews);
   } catch (err) {
     console.error("Failed to fetch reviews:", err);
-    res.status(500).json({
+    return res.status(500).json({
       error: true,
       message: "Failed to fetch reviews.",
     });
   }
 });
+
 router.get("/enquiry/fetch/admin", verifyToken, async (req, res) => {
   if (req.user.role !== "Admin") {
-    res.status(401).json({
+    return res.status(401).json({
       error: true,
       message: "Unauthorized access",
     });
@@ -85,36 +90,38 @@ router.get("/enquiry/fetch/admin", verifyToken, async (req, res) => {
       updatedAt: -1,
     });
 
-    res.status(200).json(enquiries);
+    return res.status(200).json(enquiries);
   } catch (err) {
     console.error("Failed to fetch enquiries:", err);
-    res.status(500).json({
+    return res.status(500).json({
       error: true,
       message: "Failed to fetch enquiries.",
     });
   }
 });
+
 router.get("/contact/fetch/admin", verifyToken, async (req, res) => {
   if (req.user.role !== "Admin") {
-    res.status(401).json({
+    return res.status(401).json({
       error: true,
       message: "Unauthorized access",
     });
   }
   try {
-    const enquiries = await Contact.find().sort({
+    const contacts = await Contact.find().sort({
       updatedAt: -1,
     });
 
-    res.status(200).json(enquiries);
+    return res.status(200).json(contacts);
   } catch (err) {
-    console.error("Failed to fetch enquiries:", err);
-    res.status(500).json({
+    console.error("Failed to fetch contacts:", err);
+    return res.status(500).json({
       error: true,
-      message: "Failed to fetch enquiries.",
+      message: "Failed to fetch contacts.",
     });
   }
 });
+
 router.get("/listings-by-month", async (req, res) => {
   try {
     const listings = await Property.aggregate([
@@ -145,11 +152,12 @@ router.get("/listings-by-month", async (req, res) => {
       },
     ]);
 
-    res.status(200).json(listings);
+    return res.status(200).json(listings);
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch listing stats" });
+    return res.status(500).json({ error: "Failed to fetch listing stats" });
   }
 });
+
 router.get("/combined-stats", async (req, res) => {
   try {
     const [
@@ -247,7 +255,7 @@ router.get("/combined-stats", async (req, res) => {
       ]),
     ]);
 
-    res.status(200).json({
+    return res.status(200).json({
       listings,
       usersByMonth,
       reviewsByMonth,
@@ -256,7 +264,8 @@ router.get("/combined-stats", async (req, res) => {
     });
   } catch (err) {
     console.log(err);
-    res.status(500).json({ error: "Failed to fetch all statistics" });
+    return res.status(500).json({ error: "Failed to fetch all statistics" });
   }
 });
+
 export default router;

@@ -76,15 +76,18 @@ router.post("/google-login", async (req, res) => {
         message: "Account not found",
       });
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "1d",
-      }
-    );
     const userObj = user.toObject();
+    delete userObj._id; // Delete the original _id
     delete userObj.password;
+
+    const payload = {
+      id: user._id, // Set the id at the top level
+      ...userObj, // Spread the rest of the user details
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
     return res
       .cookie("auth_token", token, {
         httpOnly: true,
@@ -104,7 +107,6 @@ router.post("/google-login", async (req, res) => {
     res.status(500).json({ error: true, message: "Something went wrong" });
   }
 });
-
 router.post("/login", async (req, res) => {
   const { email, code } = req.body;
   if (!email || !code)
@@ -133,16 +135,18 @@ router.post("/login", async (req, res) => {
         .status(401)
         .json({ error: true, message: "Account not found" });
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "1d",
-      }
-    );
-
-    let userObj = user.toObject();
+    const userObj = user.toObject();
+    delete userObj._id; // Delete the original _id
     delete userObj.password;
+
+    const payload = {
+      id: user._id, // Set the id at the top level
+      ...userObj, // Spread the rest of the user details
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
 
     return res
       .cookie("auth_token", token, {

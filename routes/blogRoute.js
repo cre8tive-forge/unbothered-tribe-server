@@ -63,7 +63,7 @@ router.post(
     }
   }
 );
-router.get("/fetch/:id", async (req, res) => {
+router.get("/fetch/single/:id", async (req, res) => {
   try {
     console.log(req.params.id);
     const blog = await Blog.findOne({ slug: req.params.id });

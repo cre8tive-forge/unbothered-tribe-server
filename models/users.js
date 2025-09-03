@@ -15,7 +15,6 @@ const userSchema = new mongoose.Schema(
     number: { type: String, trim: true },
     bio: { type: String },
     country: { type: String, trim: true, default: "Nigeria" },
-
     status: {
       type: String,
       enum: ["active", "suspended", "banned"],
@@ -49,6 +48,19 @@ const userSchema = new mongoose.Schema(
     profilePhoto: {
       type: String,
       default: "https://robohash.org/david",
+    },
+    subscription: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Subscription",
+      default: null,
+    },
+    subscribed: {
+      type: Boolean,
+      default: false,
+    },
+    listingLimit: {
+      type: Number,
+      default: 1,
     },
   },
   {
