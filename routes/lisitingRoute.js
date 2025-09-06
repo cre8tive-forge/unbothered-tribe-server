@@ -102,9 +102,11 @@ router.post("/store", verifyToken, upload.array("images"), async (req, res) => {
 });
 router.get("/fetch", async (req, res) => {
   try {
-    const listings = await Property.find({ status: "active" }).sort({
-      createdAt: -1,
-    });
+    const listings = await Property.find({ status: "active" })
+      .populate("createdBy", "profilePhoto")
+      .sort({
+        createdAt: -1,
+      });
     res.status(200).json(listings);
   } catch (err) {
     res.status(500).json({
@@ -174,7 +176,6 @@ router.get("/fetch/:id", async (req, res) => {
     });
   }
 });
-
 router.get("/fetch/protected/:id", verifyToken, async (req, res) => {
   const { id } = req.params;
   try {
@@ -232,29 +233,83 @@ router.put("/:id/status", verifyToken, async (req, res) => {
 
     const { status } = req.body;
     const validStatuses = ["active", "archived", "sold", "rented", "pending"];
-    if (!validStatuses.includes(status)) {
+    const specialStatuses = ["featured", "homepage", "removeFromHomepage"];
+
+    if (!validStatuses.includes(status) && !specialStatuses.includes(status)) {
       return res
         .status(400)
         .json({ error: true, message: "Invalid status provided." });
     }
 
-    const updatedListing = await Property.findByIdAndUpdate(
-      listingId,
-      { status },
-      { new: true }
-    );
+    if (validStatuses.includes(status)) {
+      const updatedListing = await Property.findByIdAndUpdate(
+        listingId,
+        { status },
+        { new: true }
+      );
 
-    await Timestamp.findOneAndUpdate(
-      { type: "listing" },
-      { updatedAt: Date.now() },
-      { new: true }
-    );
+      return res.status(200).json({
+        error: false,
+        message: "Listing status updated successfully.",
+        listing: updatedListing,
+      });
+    }
 
-    return res.status(200).json({
-      error: false,
-      message: "Listing status updated successfully.",
-      listing: updatedListing,
-    });
+    if (status === "featured") {
+      await Property.updateMany(
+        { isFeatured: true },
+        { $set: { isFeatured: false } }
+      );
+      const updatedListing = await Property.findByIdAndUpdate(
+        listingId,
+        { isFeatured: true },
+        { new: true }
+      );
+      return res.status(200).json({
+        error: false,
+        message: "Listing successfully set as featured.",
+        listing: updatedListing,
+      });
+    }
+
+    if (status === "homepage") {
+      const homepageCount = await Property.countDocuments({ onHomepage: true });
+      if (homepageCount >= 10) {
+        return res.status(400).json({
+          error: true,
+          message:
+            "Cannot add listing to homepage, 10 listings are already featured on the homepage.",
+        });
+      }
+      const updatedListing = await Property.findByIdAndUpdate(
+        listingId,
+        { onHomepage: true },
+        { new: true }
+      );
+      return res.status(200).json({
+        error: false,
+        message: "Listing successfully added to homepage.",
+        listing: updatedListing,
+      });
+    }
+
+    if (status === "removeFromHomepage") {
+      const updatedListing = await Property.findByIdAndUpdate(
+        listingId,
+        { onHomepage: false },
+        { new: true }
+      );
+      return res.status(200).json({
+        error: false,
+        message: "Listing successfully removed from homepage.",
+        listing: updatedListing,
+      });
+    }
+
+    await Timestamp.updateMany(
+      { type: { $in: ["listing", "favourite"] } },
+      { $set: { updatedAt: Date.now() } }
+    );
   } catch (err) {
     console.error("Error updating listing status:", err);
     res.status(500).json({
@@ -293,7 +348,7 @@ router.post("/delete", verifyToken, async (req, res) => {
     await Property.findByIdAndDelete(listingId);
 
     await Timestamp.updateMany(
-      { type: { $in: ["user", "review", "enquiry", "listing"] } },
+      { type: { $in: ["user", "review", "enquiry", "listing", "favourite"] } },
       { $set: { updatedAt: Date.now() } }
     );
 

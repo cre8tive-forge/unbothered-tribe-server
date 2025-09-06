@@ -80,7 +80,7 @@ router.get("/fetch/single/:id", async (req, res) => {
       .json({ message: "Error retrieving blog post", error: error.message });
   }
 });
-router.get("/fetch/dashboard", verifyToken, async (req, res) => {
+router.get("/fetch/admin", verifyToken, async (req, res) => {
   if (req.user.role === "User") {
     return res.status(403).json({
       error: true,
@@ -91,6 +91,21 @@ router.get("/fetch/dashboard", verifyToken, async (req, res) => {
     const blogs = await Blog.find().sort({
       createdAt: -1,
     });
+    res.status(200).json(blogs);
+  } catch (err) {
+    res.status(500).json({
+      error: true,
+      message: "Failed to fetch blogs.",
+    });
+  }
+});
+router.get("/fetch", async (req, res) => {
+  try {
+    const blogs = await Blog.find({ status: "published" })
+      .sort({
+        createdAt: -1,
+      })
+      .limit(6);
     res.status(200).json(blogs);
   } catch (err) {
     res.status(500).json({
@@ -145,7 +160,6 @@ router.put("/status", verifyToken, async (req, res) => {
     });
   }
 });
-
 router.post("/delete", verifyToken, async (req, res) => {
   const { blogId } = req.body;
   try {

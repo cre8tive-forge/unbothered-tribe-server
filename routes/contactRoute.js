@@ -3,6 +3,7 @@ import { Contact } from "../models/contacts.js";
 const router = express.Router();
 import axios from "axios";
 import verifyToken from "../middleware/verifyToken.js";
+import { Timestamp } from "../models/timestamps.js";
 
 router.post("/store", async (req, res) => {
   const { fullname, number, email, message, captchaToken } = req.body;
@@ -12,10 +13,17 @@ router.post("/store", async (req, res) => {
     const captchaResponse = await axios.post(
       `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${captchaToken}`
     );
-
+    const captchaData = captchaResponse.data;
     const ipAddress = req.ip;
     const response = await fetch(`http://ip-api.com/json/${ipAddress}`);
     const data = await response.json();
+
+    if (!captchaData.success) {
+      return res.status(401).json({
+        error: true,
+        message: "Recaptcha verification failed. Please try again",
+      });
+    }
 
     const country = data.country ? data.country : "Unknown";
     await Contact.create({
@@ -38,6 +46,7 @@ router.post("/store", async (req, res) => {
       message: "Contact message sent successfully",
     });
   } catch (err) {
+    console.log(err);
     res.status(500).json({
       error: true,
       message: "Unable to send your message. Please try again",
@@ -87,20 +96,20 @@ router.post("/delete", verifyToken, async (req, res) => {
 router.post("/mark-read", verifyToken, async (req, res) => {
   const { contactId } = req.body;
   try {
-    const updatedContact = await Contact.findByIdAndUpdate(
+    const contacts = await Contact.findByIdAndUpdate(
       contactId,
       { isRead: true },
       { new: true }
     );
 
-    if (!updatedContact) {
+    if (!contacts) {
       return res.status(404).json({
         error: true,
         message: "The requested contact could not be found.",
       });
     }
     await Timestamp.findOneAndUpdate(
-      { type: "contac" },
+      { type: "contact" },
       { updatedAt: Date.now() },
       { new: true }
     );
@@ -109,6 +118,7 @@ router.post("/mark-read", verifyToken, async (req, res) => {
       error: false,
       message: "Contact message marked as read.",
       lastUpdated: Date.now(),
+      contacts
     });
   } catch (error) {
     console.error("Failed to mark contact message as read:", error);

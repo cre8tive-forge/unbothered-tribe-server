@@ -1,10 +1,10 @@
-// Backend route
 import express from "express";
 import Flutterwave from "flutterwave-node-v3";
 import { User } from "../models/users.js";
 import { Transaction } from "../models/transactions.js";
 import { Subscription } from "../models/subscriptions.js";
 import { Timestamp } from "../models/timestamps.js";
+import verifyToken from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
@@ -14,21 +14,18 @@ const flw = new Flutterwave(
 );
 
 router.post("/process-payment", async (req, res) => {
-  const { transactionId, amount, currency, email, plan, reference, status } =
-    req.body;
+  const { transactionId, plan, email } = req.body;
 
-  if (
-    !transactionId ||
-    !amount ||
-    !currency ||
-    !email ||
-    !plan ||
-    !reference ||
-    !status
-  ) {
+  const expectedAmounts = {
+    Basic: 1000,
+    Premium: 5000,
+    Professional: 10000,
+  };
+
+  if (!transactionId || !plan || !email) {
     return res
       .status(400)
-      .json({ error: true, message: "Missing transaction details." });
+      .json({ error: true, message: "Missing required details." });
   }
 
   try {
@@ -37,39 +34,32 @@ router.post("/process-payment", async (req, res) => {
       return res.status(404).json({ error: true, message: "User not found." });
     }
 
-    const transaction = await Transaction.findOneAndUpdate(
-      { reference: reference },
-      {
-        userId: user._id,
-        amount: amount,
-        currency: currency,
-        status: status,
-        plan: plan,
-        transactionId: transactionId,
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-    await Timestamp.findOneAndUpdate(
-      { type: "transaction" },
-      { $set: { updatedAt: Date.now() } },
-      { new: true, upsert: true }
-    );
-
     const verificationResponse = await flw.Transaction.verify({
       id: transactionId,
     });
     const verifiedData = verificationResponse.data;
 
     if (
-      verifiedData.status === "successful" ||
-      verifiedData.status === "completed"
+      (verifiedData.status === "successful" ||
+        verifiedData.status === "completed") &&
+      verifiedData.amount >= expectedAmounts[plan]
     ) {
-      await Transaction.findOneAndUpdate(
-        { reference: reference },
+      const transaction = await Transaction.findOneAndUpdate(
+        { transactionId: transactionId },
         {
-          status: verifiedData.status,
+          userId: user._id,
           amount: verifiedData.amount,
-        }
+          currency: verifiedData.currency,
+          status: verifiedData.status,
+          plan: plan,
+          reference: verifiedData.tx_ref,
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      await Subscription.updateMany(
+        { userId: user._id, status: "Active" },
+        { status: "Expired" }
       );
 
       const subscriptionDurationInDays = 30;
@@ -91,16 +81,12 @@ router.post("/process-payment", async (req, res) => {
           listingLimit = 1;
       }
 
-      await Subscription.updateMany(
-        { userId: user._id, status: "Active" },
-        { status: "Expired" }
-      );
-
       const newSubscription = await Subscription.create({
         userId: user._id,
         plan: plan,
         status: "Active",
         expiryDate,
+        transaction: transaction._id,
       });
 
       user.subscription = newSubscription._id;
@@ -109,11 +95,7 @@ router.post("/process-payment", async (req, res) => {
       await user.save();
 
       await Timestamp.updateMany(
-        {
-          type: {
-            $in: ["user", "subscription", "transaction"],
-          },
-        },
+        { type: { $in: ["user", "subscription", "transaction"] } },
         { $set: { updatedAt: Date.now() } }
       );
 
@@ -122,10 +104,13 @@ router.post("/process-payment", async (req, res) => {
         message: "Payment successful! Your subscription is now active.",
       });
     } else {
+      // Payment failed or amount mismatch
       await Transaction.findOneAndUpdate(
-        { reference: reference },
-        { status: verifiedData.status }
+        { transactionId: transactionId },
+        { status: "failed" }, // Default to failed for security
+        { new: true, upsert: true, setDefaultsOnInsert: true }
       );
+
       await Timestamp.findOneAndUpdate(
         { type: "transaction" },
         { $set: { updatedAt: Date.now() } },
@@ -134,15 +119,20 @@ router.post("/process-payment", async (req, res) => {
 
       return res.status(400).json({
         error: true,
-        message: "Payment failed during verification. Please try again.",
+        message: "Payment failed. Please try again.",
       });
     }
   } catch (error) {
     console.error("Backend error:", error);
-    return res
-      .status(500)
-      .json({ error: true, message: "Internal server error." });
+    return res.status(500).json({
+      error: true,
+      message: "An internal server error occurred.",
+    });
   }
+});
+
+router.post("/free-plan", verifyToken, async (req, res) => {
+
 });
 
 export default router;

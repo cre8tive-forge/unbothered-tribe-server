@@ -84,10 +84,10 @@ router.post("/store", async (req, res) => {
 router.get("/fetch/user", verifyToken, async (req, res) => {
   const currentUser = req.user.id;
   try {
-    const reviews = await Review.find({ user: currentUser }).populate(
-      "property",
-      "title price images _id"
-    );
+    const reviews = await Review.find({
+      user: currentUser,
+      status: "published",
+    }).populate("property", "title price images _id");
     res.status(200).json(reviews);
   } catch (err) {
     console.error(err);
@@ -103,6 +103,22 @@ router.get("/fetch/admin", verifyToken, async (req, res) => {
       .populate("property", "title price images _id")
       .populate("agent", "firstname lastname email country _id")
       .populate("user", "firstname lastname email country _id");
+
+    res.status(200).json(reviews);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      error: true,
+      message: "Failed to fetch reviews.",
+    });
+  }
+});
+router.get("/fetch", async (req, res) => {
+  try {
+    const reviews = await Review.find({ status: "published" })
+      .sort({ createdAt: -1 })
+      .limit(6)
+      .populate("user", "firstname lastname country profilePhoto role");
 
     res.status(200).json(reviews);
   } catch (err) {
@@ -147,7 +163,6 @@ router.post("/delete", verifyToken, async (req, res) => {
     });
   }
 });
-
 router.put("/status", verifyToken, async (req, res) => {
   try {
     const { reviewId, status } = req.body;
@@ -163,12 +178,10 @@ router.put("/status", verifyToken, async (req, res) => {
         .json({ error: true, message: "Review not found." });
     }
     if (req.user.role !== "Admin") {
-      return res
-        .status(403)
-        .json({
-          error: true,
-          message: "Not authorized to update review status.",
-        });
+      return res.status(403).json({
+        error: true,
+        message: "Not authorized to update review status.",
+      });
     }
     const reviews = await Review.findByIdAndUpdate(
       reviewId,

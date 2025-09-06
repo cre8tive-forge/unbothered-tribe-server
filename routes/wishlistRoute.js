@@ -63,4 +63,52 @@ router.get("/fetch", verifyToken, async (req, res) => {
     });
   }
 });
+router.post("/favorites/remove", verifyToken, async (req, res) => {
+  const userId = req.user.id;
+  const { listingId } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: true, message: "User not found." });
+    }
+
+    const listingIndex = user.favoriteListings.indexOf(listingId);
+
+    if (listingIndex > -1) {
+      user.favoriteListings.splice(listingIndex, 1);
+      user.updatedAt = Date.now();
+      await user.save();
+
+      await Timestamp.findOneAndUpdate(
+        { type: "favourite" },
+        { $set: { updatedAt: Date.now() } },
+        {
+          new: true,
+          upsert: true,
+        }
+      );
+      const wishlist = await Property.find({
+        _id: { $in: user.favoriteListings },
+      }).sort({ createdAt: -1 });
+
+      return res.status(200).json({
+        error: false,
+        wishlist,
+        message: "Listing removed from favorites successfully.",
+        lastUpdated: Date.now(),
+      });
+    } else {
+      return res.status(404).json({
+        error: true,
+        message: "Listing not found in your favorites.",
+      });
+    }
+  } catch (err) {
+    res.status(500).json({
+      message: "Unable to remove listing from favorites.",
+      error: err.message,
+    });
+  }
+});
 export default router;
