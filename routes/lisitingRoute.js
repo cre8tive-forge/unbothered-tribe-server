@@ -176,6 +176,54 @@ router.get("/fetch/:id", async (req, res) => {
     });
   }
 });
+router.get("/fetch/purpose/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res
+        .status(400)
+        .json({ error: true, message: "Invalid listing ID." });
+    }
+
+    const listing = await Property.findOneAndUpdate(
+      { _id: id },
+      { $inc: { views: 1 } },
+      { new: true }
+    );
+    if (!listing) {
+      return res
+        .status(404)
+        .json({ error: true, message: "Listing record not found." });
+    }
+
+    const agent = await User.findById(listing.createdBy).select(
+      "firstname lastname profilePhoto role"
+    );
+    if (!agent) {
+      return res
+        .status(401)
+        .json({ error: true, message: "Unidentified agent" });
+    }
+
+    const reviews = await Review.find({ property: listing._id })
+      .populate("user", "profilePhoto firstname lastname role")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      error: false,
+      listing,
+      agent,
+      reviews,
+    });
+  } catch (error) {
+    console.error("Error fetching listing:", error);
+    res.status(500).json({
+      error: true,
+      message: "Unable to fetch listing. Please try again.",
+    });
+  }
+});
 router.get("/fetch/protected/:id", verifyToken, async (req, res) => {
   const { id } = req.params;
   try {

@@ -9,7 +9,25 @@ import { Timestamp } from "../models/timestamps.js";
 import cloudinary from "../config/cloudinary.js";
 const router = express.Router();
 
-router.get("/fetch", verifyToken, async (req, res) => {
+router.get("/fetch", async (req, res) => {
+  try {
+    const agents = await User.find({
+      role: "Agent",
+    })
+      .sort({
+        createdAt: -1,
+      })
+      .select("-password");
+    res.status(200).json(agents);
+  } catch (err) {
+    console.error("Failed to fetch agents:", err);
+    res.status(500).json({
+      error: true,
+      message: "Failed to fetch agents.",
+    });
+  }
+});
+router.get("/fetch/admin", verifyToken, async (req, res) => {
   try {
     const currentUserId = req.user.id;
     const agents = await User.find({
@@ -29,7 +47,7 @@ router.get("/fetch", verifyToken, async (req, res) => {
     });
   }
 });
-router.get("/fetch/order", verifyToken, async (req, res) => {
+router.get("/fetch/admin/order", verifyToken, async (req, res) => {
   try {
     const currentUserId = req.user.id;
 
@@ -199,5 +217,29 @@ router.post("/delete", verifyToken, async (req, res) => {
     });
   }
 });
-
+router.get("/fetch/single/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const agent = await User.findOneAndUpdate(
+      { _id: id },
+      { $inc: { views: 0 } },
+      { new: true }
+    );
+    if (!agent) {
+      return res
+        .status(404)
+        .json({ error: true, message: "Agent record not found." });
+    }
+    const listings = await Property.find({ createdBy: agent._id }).sort({
+      createdAt: -1,
+    });
+    return res.json({ agent, listings });
+  } catch (error) {
+    console.error("Error fetching agent's details:", error);
+    res.status(500).json({
+      error: true,
+      message: "Unable to fetch agent's details. Please try again.",
+    });
+  }
+});
 export default router;

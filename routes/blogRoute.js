@@ -5,6 +5,8 @@ import { upload, uploadToCloudinary } from "../resources/multer.js";
 import { Blog } from "../models/blogs.js";
 import slugify from "slugify";
 import mongoose from "mongoose";
+import axios from "axios";
+import { BlogComment } from "../models/blogComment.js";
 const router = express.Router();
 router.post(
   "/store",
@@ -65,14 +67,25 @@ router.post(
 );
 router.get("/fetch/single/:id", async (req, res) => {
   try {
-    console.log(req.params.id);
-    const blog = await Blog.findOne({ slug: req.params.id });
+    const blog = await Blog.findOneAndUpdate(
+      { slug: req.params.id },
+      { $inc: { views: 1 } },
+      { new: true }
+    );
     if (!blog) {
       return res
         .status(404)
         .json({ error: true, message: "Blog post not found" });
     }
-    res.status(200).json(blog);
+    const comments = await BlogComment.find({ blog: blog._id }).sort({
+      createdAt: -1,
+    });
+    return res.status(200).json({
+      error: false,
+      message: "Blog details and comments fetched successfully",
+      blog,
+      comments,
+    });
   } catch (error) {
     console.log(error);
     res
@@ -191,6 +204,53 @@ router.post("/delete", verifyToken, async (req, res) => {
     res.status(500).json({
       message: "Unable to delete blog. Please try again later.",
       error: error.message,
+    });
+  }
+});
+router.post("/comment/store", async (req, res) => {
+  const { name, email, comment, captchaToken, blogId } = req.body;
+  try {
+    const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+    const captchaResponse = await axios.post(
+      `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${captchaToken}`
+    );
+    const captchaData = captchaResponse.data;
+    const ipAddress = req.ip;
+    const response = await fetch(`http://ip-api.com/json/${ipAddress}`);
+    const data = await response.json();
+
+    if (!captchaData.success) {
+      return res.status(401).json({
+        error: true,
+        message: "Recaptcha verification failed. Please try again",
+      });
+    }
+    const country = data.country ? data.country : "Unknown";
+    await BlogComment.create({
+      name,
+      email,
+      comment,
+      country,
+      blog: blogId,
+    });
+    await Timestamp.findOneAndUpdate(
+      { type: "blog" },
+      { $set: { updatedAt: Date.now() } },
+      {
+        new: true,
+        upsert: true,
+      }
+    );
+    return res.status(200).json({
+      error: false,
+      message: "Your comment has been successfully submitted",
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      error: true,
+      message:
+        "An error occurred while submitting your comment. Please try again later.",
     });
   }
 });

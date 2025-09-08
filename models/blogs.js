@@ -13,6 +13,7 @@ const blogSchema = new mongoose.Schema(
       enum: ["pending", "published"],
       default: "pending",
     },
+    views: { type: Number, default: 0 },
     slug: {
       type: String,
       required: true,
@@ -25,7 +26,7 @@ const blogSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-  
+
     excerpt: {
       type: String,
       required: true,
