@@ -46,7 +46,7 @@ app.use(
 
 app.options("*", cors());
 app.get("/", (request, response) => {
-  response.send("Hey there! I am handling this server!");
+  response.send("Hey there render! Wake up!");
 });
 app.use("/api/contact", contactRoute);
 app.use("/api/auth", authRoute);
