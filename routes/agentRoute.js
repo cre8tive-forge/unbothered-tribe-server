@@ -222,7 +222,7 @@ router.get("/fetch/single/:id", async (req, res) => {
   try {
     const agent = await User.findOneAndUpdate(
       { _id: id },
-      { $inc: { views: 0 } },
+      { $inc: { views: 1 } },
       { new: true }
     );
     if (!agent) {

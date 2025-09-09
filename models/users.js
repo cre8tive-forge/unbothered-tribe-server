@@ -13,6 +13,7 @@ const userSchema = new mongoose.Schema(
     middlename: { type: String, trim: true },
     lastname: { type: String, trim: true },
     number: { type: String, trim: true },
+    whatsappNumber: { type: String, trim: true },
     bio: { type: String },
     country: { type: String, trim: true, default: "Nigeria" },
     status: {

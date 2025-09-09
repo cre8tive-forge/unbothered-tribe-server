@@ -103,7 +103,7 @@ router.post("/store", verifyToken, upload.array("images"), async (req, res) => {
 router.get("/fetch", async (req, res) => {
   try {
     const listings = await Property.find({ status: "active" })
-      .populate("createdBy", "profilePhoto")
+      .populate("createdBy", "profilePhoto _id firstname lastname number")
       .sort({
         createdAt: -1,
       });
