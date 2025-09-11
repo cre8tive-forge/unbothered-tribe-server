@@ -13,6 +13,8 @@ router.get("/fetch", async (req, res) => {
   try {
     const agents = await User.find({
       role: "Agent",
+      kycStatus: "verified",
+      status: "active",
     })
       .sort({
         createdAt: -1,
@@ -77,6 +79,7 @@ router.post("/edit/save", verifyToken, async (req, res) => {
     role,
     status,
     agentId,
+    kycStatus,
   } = req.body;
   try {
     const user = await User.findById(agentId);
@@ -117,6 +120,7 @@ router.post("/edit/save", verifyToken, async (req, res) => {
         email,
         role,
         status,
+        kycStatus,
       },
       { new: true }
     );
@@ -230,7 +234,10 @@ router.get("/fetch/single/:id", async (req, res) => {
         .status(404)
         .json({ error: true, message: "Agent record not found." });
     }
-    const listings = await Property.find({ createdBy: agent._id }).sort({
+    const listings = await Property.find({
+      createdBy: agent._id,
+      status: "active",
+    }).sort({
       createdAt: -1,
     });
     return res.json({ agent, listings });

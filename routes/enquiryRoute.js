@@ -25,17 +25,16 @@ router.post("/store", async (req, res) => {
       });
     }
 
-  const existingEnquiry = await Enquiry.findOne({
-    $or: [{ email: email }, { number: number }],
-  });
-
-  if (existingEnquiry) {
-    return res.status(409).json({
-      error: true,
-      message: "You already have an existing enquiry on this property.",
+    const existingEnquiry = await Enquiry.findOne({
+      $or: [{ email: email }, { number: number }],
     });
-  }
 
+    if (existingEnquiry) {
+      return res.status(409).json({
+        error: true,
+        message: "You already have an existing enquiry on this property.",
+      });
+    }
 
     const ipAddress = req.ip;
     const response = await fetch(`http://ip-api.com/json/${ipAddress}`);
@@ -49,7 +48,7 @@ router.post("/store", async (req, res) => {
       message,
       propertyId: listing._id,
       agentName: `${agent.firstname} ${agent.lastname || ""}`,
-      agentImage: agent.profilePhoto,
+      agentImage: agent.profilePhoto.url,
       agentId: agent._id,
       country,
     });
@@ -76,8 +75,31 @@ router.post("/store", async (req, res) => {
   }
 });
 router.get("/fetch", verifyToken, async (req, res) => {
+  const userRole = req.user.role;
+  const UserId = req.user.id;
+  let enquiries;
   try {
-    const enquiries = await Enquiry.find().sort({ createdAt: -1 });
+    if (userRole === "Admin") {
+      enquiries = await Enquiry.find().sort({ createdAt: -1 });
+    } else {
+      enquiries = await Enquiry.find({ agentId: UserId }).sort({
+        createdAt: -1,
+      });
+    }
+    res.status(200).json(enquiries);
+  } catch (err) {
+    res.status(500).json({
+      error: true,
+      message: "Failed to fetch enquiries.",
+    });
+  }
+});
+router.get("/fetch/agent", verifyToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    const enquiries = await Enquiry.find({ agentId: userId }).sort({
+      createdAt: -1,
+    });
     res.status(200).json(enquiries);
   } catch (err) {
     res.status(500).json({

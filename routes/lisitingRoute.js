@@ -128,6 +128,22 @@ router.get("/fetch/dashboard", verifyToken, async (req, res) => {
     });
   }
 });
+router.get("/fetch/agent", verifyToken, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    const listings = await Property.find({
+      createdBy: userId,
+    }).sort({
+      createdAt: -1,
+    });
+    res.status(200).json(listings);
+  } catch (err) {
+    res.status(500).json({
+      error: true,
+      message: "Failed to fetch listings.",
+    });
+  }
+});
 router.get("/fetch/:id", async (req, res) => {
   const { id } = req.params;
 
@@ -148,10 +164,14 @@ router.get("/fetch/:id", async (req, res) => {
         .status(404)
         .json({ error: true, message: "Listing record not found." });
     }
+    if (listing.status !== "active") {
+      return res.status(401).json({
+        error: true,
+        message: "Listing currently not available to view",
+      });
+    }
 
-    const agent = await User.findById(listing.createdBy).select(
-      "firstname lastname profilePhoto role"
-    );
+    const agent = await User.findById(listing.createdBy).select("-password");
     if (!agent) {
       return res
         .status(401)
@@ -288,6 +308,10 @@ router.put("/:id/status", verifyToken, async (req, res) => {
         .status(400)
         .json({ error: true, message: "Invalid status provided." });
     }
+    await Timestamp.updateMany(
+      { type: { $in: ["listing", "favourite"] } },
+      { $set: { updatedAt: Date.now() } }
+    );
 
     if (validStatuses.includes(status)) {
       const updatedListing = await Property.findByIdAndUpdate(
@@ -353,11 +377,6 @@ router.put("/:id/status", verifyToken, async (req, res) => {
         listing: updatedListing,
       });
     }
-
-    await Timestamp.updateMany(
-      { type: { $in: ["listing", "favourite"] } },
-      { $set: { updatedAt: Date.now() } }
-    );
   } catch (err) {
     console.error("Error updating listing status:", err);
     res.status(500).json({

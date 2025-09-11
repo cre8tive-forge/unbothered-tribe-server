@@ -13,9 +13,25 @@ const userSchema = new mongoose.Schema(
     middlename: { type: String, trim: true },
     lastname: { type: String, trim: true },
     number: { type: String, trim: true },
-    whatsappNumber: { type: String, trim: true },
-    bio: { type: String },
+
+    socials: {
+      facebook: { type: String },
+      instagram: { type: String },
+      linkedin: { type: String },
+      twitter: { type: String },
+      tiktok: { type: String },
+      whatsapp: { type: String },
+    },
+
+    description: { type: String },
+    organization: { type: String },
+    websiteUrl: { type: String },
+    username: { type: String },
+    nin: { type: String },
+
     country: { type: String, trim: true, default: "Nigeria" },
+    state: { type: String, trim: true, default: "Abia State" },
+
     status: {
       type: String,
       enum: ["active", "suspended", "banned"],
@@ -26,6 +42,7 @@ const userSchema = new mongoose.Schema(
       enum: ["unverified", "verified", "rejected", "pending"],
       default: "unverified",
     },
+
     totalisting: {
       type: Number,
       default: 0,
@@ -47,8 +64,11 @@ const userSchema = new mongoose.Schema(
     ],
     password: { type: String },
     profilePhoto: {
-      type: String,
-      default: "https://robohash.org/david",
+      url: {
+        type: String,
+        default: "https://robohash.org/david",
+      },
+      public_id: String,
     },
     subscription: {
       type: mongoose.Schema.Types.ObjectId,
@@ -57,6 +77,10 @@ const userSchema = new mongoose.Schema(
     },
     subscribed: {
       type: Boolean,
+      default: false,
+    },
+    plan: {
+      type: String,
       default: false,
     },
     listingLimit: {

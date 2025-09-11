@@ -61,7 +61,7 @@ const propertySchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-    collection: "property",
+    collection: "listings",
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
   }

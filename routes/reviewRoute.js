@@ -98,11 +98,27 @@ router.get("/fetch/user", verifyToken, async (req, res) => {
   }
 });
 router.get("/fetch/admin", verifyToken, async (req, res) => {
+  const userRole = req.user.role;
+  const UserId = req.user.id;
+  let reviews;
   try {
-    const reviews = await Review.find()
-      .populate("property", "title price images _id")
-      .populate("agent", "firstname lastname email country _id")
-      .populate("user", "firstname lastname email country _id");
+    if (userRole === "Admin") {
+      reviews = await Review.find()
+        .sort({
+          createdAt: -1,
+        })
+        .populate("property", "title price images _id")
+        .populate("agent", "firstname lastname email country _id profilePhoto")
+        .populate("user", "firstname lastname email country _id profilePhoto");
+    } else {
+      reviews = await Review.find({ agent: UserId })
+        .sort({
+          createdAt: -1,
+        })
+        .populate("property", "title price images _id")
+        .populate("agent", "firstname lastname email country _id profilePhoto")
+        .populate("user", "firstname lastname email country _id profilePhoto");
+    }
 
     res.status(200).json(reviews);
   } catch (err) {

@@ -32,7 +32,7 @@ router.get("/fetch", verifyToken, async (req, res) => {
     console.error(err);
     res.status(500).json({
       error: true,
-      message: "Failed to fetch reviews.",
+      message: "Failed to fetch subscriptions.",
     });
   }
 });

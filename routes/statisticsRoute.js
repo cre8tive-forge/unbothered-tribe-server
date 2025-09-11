@@ -5,6 +5,7 @@ import { User } from "../models/users.js";
 import { Review } from "../models/reviews.js";
 import { Enquiry } from "../models/enquiries.js";
 import { Contact } from "../models/contacts.js";
+import mongoose from "mongoose";
 
 const router = express.Router();
 
@@ -26,7 +27,6 @@ router.get("/listing/fetch/admin", verifyToken, async (req, res) => {
     });
   }
 });
-
 router.get("/user/fetch/admin", verifyToken, async (req, res) => {
   if (req.user.role !== "Admin") {
     return res.status(401).json({
@@ -52,7 +52,6 @@ router.get("/user/fetch/admin", verifyToken, async (req, res) => {
     });
   }
 });
-
 router.get("/review/fetch/admin", verifyToken, async (req, res) => {
   if (req.user.role !== "Admin") {
     return res.status(401).json({
@@ -77,7 +76,6 @@ router.get("/review/fetch/admin", verifyToken, async (req, res) => {
     });
   }
 });
-
 router.get("/enquiry/fetch/admin", verifyToken, async (req, res) => {
   if (req.user.role !== "Admin") {
     return res.status(401).json({
@@ -99,7 +97,6 @@ router.get("/enquiry/fetch/admin", verifyToken, async (req, res) => {
     });
   }
 });
-
 router.get("/contact/fetch/admin", verifyToken, async (req, res) => {
   if (req.user.role !== "Admin") {
     return res.status(401).json({
@@ -121,8 +118,7 @@ router.get("/contact/fetch/admin", verifyToken, async (req, res) => {
     });
   }
 });
-
-router.get("/listings-by-month", async (req, res) => {
+router.get("/listings-by-month", verifyToken, async (req, res) => {
   try {
     const listings = await Property.aggregate([
       {
@@ -157,7 +153,49 @@ router.get("/listings-by-month", async (req, res) => {
     return res.status(500).json({ error: "Failed to fetch listing stats" });
   }
 });
+router.get("/listings-by-month/agent", verifyToken, async (req, res) => {
+  const userId = req.user.id;
 
+  try {
+    const listings = await Property.aggregate([
+      {
+        $match: {
+          createdBy: new mongoose.Types.ObjectId(userId),
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
+            status: "$status",
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $group: {
+          _id: "$_id.year",
+          months: {
+            $push: {
+              month: "$_id.month",
+              status: "$_id.status",
+              count: "$count",
+            },
+          },
+        },
+      },
+      {
+        $sort: { _id: 1 },
+      },
+    ]);
+
+    return res.status(200).json(listings);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Failed to fetch listing stats" });
+  }
+});
 router.get("/combined-stats", async (req, res) => {
   try {
     const [

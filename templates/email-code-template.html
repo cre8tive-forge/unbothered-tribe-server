@@ -4,55 +4,38 @@
     <meta charset="UTF-8" />
     <title>Login Code</title>
   </head>
-  <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #ffffff; color: #000000;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="padding: 40px 0;">
-      <tr>
-        <td align="center">
-          <table width="100%" style="max-width: 480px; background-color: #ffffff; padding: 20px;">
-            <tr>
-              <td style="font-size: 20px; font-weight: 600; padding-bottom: 20px;">Hello,</td>
-            </tr>
-
-            <tr>
-              <td style="font-size: 16px; padding-bottom: 20px;">
-                Here's the confirmation code you requested:
-              </td>
-            </tr>
-
-             <tr>
-              <td style="font-size: 35px; font-weight: bold; padding-bottom: 20px;"> {{LOGIN_CODE}}</td>
-            </tr>
-
-             <tr>
-              <td style="font-size: 16px; padding-bottom: 20px;">
-               If you didn't request this, you can ignore this email or let us know.
-              </td>
-            </tr>
-
-
-            <tr>
-              <td style="border-top: 1px solid #e4e4e7; padding-top: 30px;">
-                <img src="https://cre8tiveforge.vercel.app/assets/LOGO-BHll428t.png" alt="RentaHome logo" width="100" style="margin-bottom: 10px;" />
-                <p style="font-size: 14px; color: #000000; margin: 0;">
-                  RentaHome – Anvils of imagination.
-                </p>
-              </td>
-            </tr>
-
-            <!-- <tr>
-              <td style="padding-top: 20px;">
-                <a href="https://twitter.com/mobbinapp" style="margin-right: 10px;">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg" alt="Twitter" width="20" />
-                </a>
-                <a href="https://linkedin.com/company/mobbin">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/8/81/LinkedIn_icon.svg" alt="LinkedIn" width="20" />
-                </a>
-              </td>
-            </tr> -->
-
-          </table>
-        </td>
-      </tr>
-    </table>
+  <body
+    style="
+      font-family: 'Montserrat', sans-serif;
+      background-color: #e9ebec;
+      margin: 0;
+      padding: 0;
+    "
+  >
+    <div
+      class="container"
+      style="
+        background: #ffffff;
+        border-top: 25px solid #ae801e;
+        padding: 20px 40px;
+        max-width: 650px;
+        margin: 2rem auto;
+      "
+    >
+      <h1 style="font-size: 20px; font-weight: bold; margin-top: 0">Hello,</h1>
+      <p style="font-size: 14px; line-height: 1.5em; font-weight: 500">
+        Here's the confirmation code you requested:
+      </p>
+      <p style="font-size: 35px; font-weight: bold; padding-bottom: 20px">
+        {{LOGIN_CODE}}
+      </p>
+      <p style="font-size: 14px; line-height: 1.5em; font-weight: 500">
+        If you didn't request this, you can ignore this email.
+      </p>
+      <hr style="border: 0.5px solid #d8dadc; margin: 2rem 0" />
+      <p class="sub" style="font-size: 12px">
+        RentaHome – Anvils of imagination.
+      </p>
+    </div>
   </body>
 </html>

@@ -7,6 +7,15 @@ const subscriptionSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    transaction: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Transaction",
+      required: true,
+    },
+    reference: {
+      type: String,
+      required: true,
+    },
     plan: {
       type: String,
       required: true,
