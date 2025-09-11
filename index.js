@@ -29,10 +29,11 @@ app.use(express.json());
 app.use(cookieParser());
 
 const allowedOrigins = [
-  "https://rentatruck-listing.vercel.app",
-  "http://localhost:5173",
+  "https://rentatruck-listing.vercel.app", 
+  "http://localhost:5173", 
+  "http://localhost:3000", 
+  "https://rentahome.com", 
 ];
-
 app.use(
   cors({
     origin: function (origin, callback) {
