@@ -190,12 +190,23 @@ router.post("/logout", async (req, res) => {
 router.post("/signup", async (req, res) => {
   const { firstname, lastname, phoneNumber, email, password, role } = req.body;
   try {
-    const userExists = await User.findOne({ email });
-    if (userExists)
-      return res
-        .status(409)
-        .json({ error: true, message: "This email address already exists" });
-    else {
+    const trimmedNumber = phoneNumber.trim();
+
+    const emailExists = await User.findOne({ email });
+    if (emailExists) {
+      return res.status(409).json({
+        error: true,
+        message: "This email address already exists",
+      });
+    }
+
+    const numberExists = await User.findOne({ number: trimmedNumber });
+    if (numberExists) {
+      return res.status(409).json({
+        error: true,
+        message: "This phone number already exists",
+      });
+    } else {
       const ipAddress = req.ip;
       const response = await fetch(`http://ip-api.com/json/${ipAddress}`);
       const data = await response.json();

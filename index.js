@@ -16,6 +16,7 @@ import transactionRoute from "./routes/transactionRoute.js";
 import newsletterRoute from "./routes/newsletterRoute.js";
 import settingsRoute from "./routes/settingsRoute.js";
 import reportRoute from "./routes/reportRoute.js";
+import advertismentRoute from "./routes/advertismentRoute.js";
 import faqRoute from "./routes/faqRoute.js";
 import blogRoute from "./routes/blogRoute.js";
 import userRoute from "./routes/userRoute.js";
@@ -68,6 +69,7 @@ app.use("/api/newsletter", newsletterRoute);
 app.use("/api/settings", settingsRoute);
 app.use("/api/faq", faqRoute);
 app.use("/api/report", reportRoute);
+app.use("/api/advertisment", advertismentRoute);
 
 connectToDB();
 app.listen(process.env.PORT, () =>

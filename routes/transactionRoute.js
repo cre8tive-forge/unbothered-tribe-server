@@ -1,6 +1,7 @@
 import express from "express";
 import verifyToken from "../middleware/verifyToken.js";
 import { Transaction } from "../models/transactions.js";
+import { User } from "../models/users.js";
 import { Timestamp } from "../models/timestamps.js";
 const router = express.Router();
 router.get("/fetch/agent", verifyToken, async (req, res) => {
@@ -26,7 +27,8 @@ router.get("/fetch", verifyToken, async (req, res) => {
       .sort({
         createdAt: -1,
       })
-      .populate("userId", "firstname middlename lastname profilePhoto");
+      .populate("userId", "firstname _id profilePhoto");
+
     res.status(200).json(transactions);
   } catch (err) {
     console.error(err);

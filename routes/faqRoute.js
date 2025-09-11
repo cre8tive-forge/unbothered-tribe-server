@@ -160,4 +160,27 @@ router.post("/delete", verifyToken, async (req, res) => {
     });
   }
 });
+
+router.post("/store", verifyToken, async (req, res) => {
+  const { question, answer } = req.body;
+  try {
+    await Faq.create({ question, answer });
+
+    await Timestamp.findOneAndUpdate(
+      { type: "faq" },
+      { updatedAt: Date.now() },
+      { new: true }
+    );
+    return res.status(201).json({
+      error: false,
+      message: "Faq created successfully",
+    });
+  } catch (error) {
+    console.error(`Faq creation error:`, error);
+    res.status(500).json({
+      message: "Unable to create Faq. Please try again later.",
+      error: error.message,
+    });
+  }
+});
 export default router;

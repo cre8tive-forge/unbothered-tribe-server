@@ -215,7 +215,7 @@ router.get("/fetch", verifyToken, async (req, res) => {
       .sort({
         createdAt: -1,
       })
-      .populate("userId", "firstname middlename lastname profilePhoto");
+      .populate("userId", "firstname _id profilePhoto");
     res.status(200).json(subscriptions);
   } catch (err) {
     console.error(err);
