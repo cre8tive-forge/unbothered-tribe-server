@@ -7,6 +7,7 @@ import {
   codeEmailTemplate,
   mailOptions,
   transporter,
+  welcomeMail,
 } from "../config/nodemailer.js";
 import { Timestamp } from "../models/timestamps.js";
 const router = express.Router();
@@ -235,10 +236,18 @@ router.post("/signup", async (req, res) => {
       );
 
       if (createUser && updateTimestamp)
-        return res.status(201).json({
-          error: false,
-          message: `Welcome to HouseHunter, ${firstname} ${lastname}`,
+        await transporter.sendMail({
+          ...mailOptions,
+          subject: `Welcome to HouseHunter.ng, ${firstname}!`,
+          to: email,
+          html: welcomeMail
+            .replace("{{FIRSTNAME}}", firstname)
+            .replace("{{LASTNAME}}", lastname),
         });
+      return res.status(201).json({
+        error: false,
+        message: `Welcome to HouseHunter, ${firstname} ${lastname}`,
+      });
     }
   } catch (error) {
     return res.status(500).json({
@@ -280,10 +289,18 @@ router.post("/google/signup", async (req, res) => {
         }
       );
       if (createUser && updateTimestamp)
-        return res.status(201).json({
-          error: false,
-          message: `Welcome to HouseHunter, ${firstname}`,
+        await transporter.sendMail({
+          ...mailOptions,
+          subject: `Welcome to HouseHunter.ng, ${firstname}!`,
+          to: email,
+          html: welcomeMail
+            .replace("{{FIRSTNAME}}", firstname)
+            .replace("{{LASTNAME}}", ""),
         });
+      return res.status(201).json({
+        error: false,
+        message: `Welcome to HouseHunter, ${firstname}`,
+      });
     }
   } catch (error) {
     console.log(error);

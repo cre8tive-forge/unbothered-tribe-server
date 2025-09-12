@@ -2,15 +2,15 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Login Code</title>
+    <title>Welcome to HouseHunter.ng</title>
   </head>
   <body
     style="
       margin: 0;
       padding: 0;
       font-family: Arial, sans-serif;
-      background-color: #ffffff;
-      color: #7c6b6b;
+      background-color: #f9fafb;
+      color: #333333;
     "
   >
     <table width="100%" cellpadding="0" cellspacing="0" style="padding: 40px 0">
@@ -18,50 +18,103 @@
         <td align="center">
           <table
             width="100%"
-            style="max-width: 480px; background-color: #ffffff; padding: 20px"
+            style="max-width: 520px; background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);"
           >
+            <!-- Logo -->
             <tr>
-              <td
-                style="font-size: 20px; font-weight: 600; padding-bottom: 20px"
-              >
-                Hello, {{USER}}
-              </td>
-            </tr>
-
-            <tr>
-              <td style="font-size: 16px; padding-bottom: 20px">
-                Here's the confirmation code you requested:
-              </td>
-            </tr>
-
-            <tr>
-              <td
-                style="font-size: 35px; font-weight: bold; padding-bottom: 20px"
-              >
-                {{LOGIN_CODE}}
-              </td>
-            </tr>
-
-            <tr>
-              <td style="font-size: 16px; padding-bottom: 20px">
-                If you didn't request this, you can ignore this email or let us
-                know.
-              </td>
-            </tr>
-            <!-- 
-            <tr>
-              <td style="border-top: 1px solid #e4e4e7; padding-top: 30px">
+              <td align="center" style="padding-bottom: 20px">
                 <img
-                  src="https://cre8tiveforge.vercel.app/assets/LOGO-BHll428t.png"
-                  alt="RentaHome logo"
-                  width="100"
-                  style="margin-bottom: 10px"
+                  src="https://househunter-ng.vercel.app/assets/logo-CM_w0436.png"
+                  alt="HouseHunter.ng logo"
+                  width="160"
+                  style="display: block"
                 />
-                <p style="font-size: 14px; color: #000000; margin: 0">
-                  RentaHome – Anvils of imagination.
+              </td>
+            </tr>
+
+            <!-- Heading -->
+            <tr>
+              <td
+                style="font-size: 22px; font-weight: 700; padding-bottom: 15px; color:#111111; text-align: center;"
+              >
+                Welcome to HouseHunter.ng, {{FIRSTNAME}}!
+              </td>
+            </tr>
+
+            <!-- Intro -->
+            <tr>
+              <td style="font-size: 16px; line-height: 26px; padding-bottom: 20px; color: #444444;">
+                Hi <strong>{{FIRSTNAME}} {{LASTNAME}}</strong>,<br /><br />
+                Thank you for joining <strong>HouseHunter.ng</strong> — Nigeria’s trusted property
+                listing platform where you can <strong>find, rent, buy, and list houses</strong>
+                with ease. Whether you’re a property seeker, landlord, or agent, we’re here to
+                make your journey simple and stress-free.
+              </td>
+            </tr>
+
+            <!-- Value Section -->
+            <tr>
+              <td style="font-size: 15px; line-height: 24px; padding-bottom: 20px; color:#555555;">
+                With your new account, you can:
+                <ul style="margin-top: 10px; margin-bottom: 20px; padding-left: 20px; color:#555555;">
+                  <li>🏠 Browse hundreds of verified property listings.</li>
+                  <li>📌 List your own property and reach thousands of potential tenants or buyers.</li>
+                  <li>🤝 Connect with trusted landlords, agents, and fellow house hunters.</li>
+                  <li>🔔 Save your favorite listings and get notified of new opportunities.</li>
+                </ul>
+              </td>
+            </tr>
+
+            <!-- Call to Action -->
+            <tr>
+              <td align="center" style="padding-bottom: 30px">
+                <a
+                  href="https://househunter.ng"
+                  style="
+                    background-color: #0078d7;
+                    color: #ffffff;
+                    text-decoration: none;
+                    font-size: 16px;
+                    padding: 14px 28px;
+                    border-radius: 6px;
+                    font-weight: bold;
+                    display: inline-block;
+                  "
+                  target="_blank"
+                >
+                  Explore HouseHunter.ng
+                </a>
+              </td>
+            </tr>
+
+            <!-- Closing -->
+            <tr>
+              <td style="font-size: 15px; line-height: 24px; padding-bottom: 20px; color:#444444;">
+                Once again, welcome to the HouseHunter community! 🏡  
+                We’re excited to help you on your journey to finding (or listing) the perfect home.
+                <br /><br />
+                Warm regards,<br />
+                <strong>The HouseHunter.ng Team</strong>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td
+                style="
+                  border-top: 1px solid #e4e4e7;
+                  padding-top: 20px;
+                  text-align: center;
+                "
+              >
+                <p style="font-size: 14px; color: #000000; margin: 0; font-weight: bold;">
+                  HouseHunter.ng – Find Your Next Home.
+                </p>
+                <p style="font-size: 12px; color: #888888; margin: 5px 0 0 0;">
+                  © 2025 HouseHunter.ng. All rights reserved.
                 </p>
               </td>
-            </tr> -->
+            </tr>
           </table>
         </td>
       </tr>

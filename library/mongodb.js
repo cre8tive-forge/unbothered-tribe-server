@@ -8,7 +8,7 @@ const connectToDB = async () => {
     if (mongoose.connection.readyState === 1) return;
      console.log("Connecting to database....");
     await mongoose.connect(process.env.MONGO_URI, {
-      dbName: "rentahome-database",
+      dbName: "househunter-database",
     });
     console.log("Database connection successful ✅");
   } catch (error) {

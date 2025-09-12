@@ -52,9 +52,10 @@ app.use(
 );
 
 app.options("*", cors());
-app.get("/", (request, response) => {
-  response.send("Hey there render! Wake up!");
+app.get("/ping", (req, res) => {
+  res.status(200).send("pong");
 });
+
 app.use("/api/contact", contactRoute);
 app.use("/api/auth", authRoute);
 app.use("/api/reviews", reviewRoute);
@@ -75,6 +76,6 @@ app.use("/api/report", reportRoute);
 app.use("/api/advertisment", advertismentRoute);
 
 connectToDB();
-app.listen(process.env.PORT, () =>
+app.listen(process.env.PORT || 5000, () =>
   console.log(`Listening on PORT ${process.env.PORT}`)
 );
