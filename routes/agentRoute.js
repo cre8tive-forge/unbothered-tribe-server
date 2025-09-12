@@ -7,6 +7,11 @@ import { Enquiry } from "../models/enquiries.js";
 import { Property } from "../models/property.js";
 import { Timestamp } from "../models/timestamps.js";
 import cloudinary from "../config/cloudinary.js";
+import {
+  kycApprovedMail,
+  mailOptions,
+  transporter,
+} from "../config/nodemailer.js";
 const router = express.Router();
 
 router.get("/fetch", async (req, res) => {
@@ -109,7 +114,16 @@ router.post("/edit/save", verifyToken, async (req, res) => {
         });
       }
     }
-
+    if (user.kycStatus !== "verified" && kycStatus === "verified") {
+      await transporter.sendMail({
+        ...mailOptions,
+        subject: `KYC Verification Approved`,
+        to: email,
+        html: kycApprovedMail
+          .replace(/{{FIRSTNAME}}/g, firstname)
+          .replace(/{{LASTNAME}}/g, ""),
+      });
+    }
     await User.findByIdAndUpdate(
       agentId,
       {

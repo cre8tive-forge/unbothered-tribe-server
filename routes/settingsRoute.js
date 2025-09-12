@@ -351,15 +351,17 @@ router.post("/information/update", verifyToken, async (req, res) => {
   }
 
   try {
-    const existingUser = await User.findOne({
-      "socials.whatsapp": whatsapp,
-    });
-
-    if (existingUser && existingUser._id.toString() !== userId) {
-      return res.status(409).json({
-        error: true,
-        message: "This WhatsApp number is already in use by another user.",
+    if (whatsapp !== "") {
+      const existingUser = await User.findOne({
+        "socials.whatsapp": whatsapp,
       });
+
+      if (existingUser && existingUser._id.toString() !== userId) {
+        return res.status(409).json({
+          error: true,
+          message: "This WhatsApp number is already in use by another user.",
+        });
+      }
     }
 
     const updateFields = {

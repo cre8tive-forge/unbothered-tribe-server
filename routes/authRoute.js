@@ -49,7 +49,7 @@ router.post("/login/code", async (req, res) => {
       ...mailOptions,
       subject: `Your temporary Househunter code is ${code}`,
       to: email,
-      html: codeEmailTemplate.replace("{{LOGIN_CODE}}", code),
+      html: codeEmailTemplate.replaceAll("{{LOGIN_CODE}}", code),
     });
     return res
       .status(200)
@@ -234,22 +234,30 @@ router.post("/signup", async (req, res) => {
           upsert: true,
         }
       );
+      const sendmail = await transporter.sendMail({
+        ...mailOptions,
+        subject: `Welcome to HouseHunter.ng, ${firstname}!`,
+        to: email,
+        html: welcomeMail
+          .replace(/{{FIRSTNAME}}/g, firstname)
+          .replace(/{{LASTNAME}}/g, lastname),
+      });
 
       if (createUser && updateTimestamp)
-        await transporter.sendMail({
-          ...mailOptions,
-          subject: `Welcome to HouseHunter.ng, ${firstname}!`,
-          to: email,
-          html: welcomeMail
-            .replace("{{FIRSTNAME}}", firstname)
-            .replace("{{LASTNAME}}", lastname),
-        });
-      return res.status(201).json({
-        error: false,
-        message: `Welcome to HouseHunter, ${firstname} ${lastname}`,
-      });
+        if (sendmail) {
+          return res.status(201).json({
+            error: false,
+            message: `Welcome to HouseHunter, ${firstname} ${lastname}`,
+          });
+        } else {
+          return res.status(400).json({
+            error: true,
+            message: "Mail Sending failed",
+          });
+        }
     }
   } catch (error) {
+    console.log(error);
     return res.status(500).json({
       error: true,
       message: "Unable to create your account. Please try again",
@@ -294,8 +302,8 @@ router.post("/google/signup", async (req, res) => {
           subject: `Welcome to HouseHunter.ng, ${firstname}!`,
           to: email,
           html: welcomeMail
-            .replace("{{FIRSTNAME}}", firstname)
-            .replace("{{LASTNAME}}", ""),
+            .replace(/{{FIRSTNAME}}/g, firstname)
+            .replace(/{{LASTNAME}}/g, ""),
         });
       return res.status(201).json({
         error: false,

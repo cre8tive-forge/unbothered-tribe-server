@@ -12,6 +12,12 @@ import { Review } from "../models/reviews.js";
 import { Enquiry } from "../models/enquiries.js";
 import mongoose from "mongoose";
 import { Timestamp } from "../models/timestamps.js";
+import {
+  listingApprovedMail,
+  listingsubmittedmail,
+  mailOptions,
+  transporter,
+} from "../config/nodemailer.js";
 
 const router = express.Router();
 router.post("/store", verifyToken, upload.array("images"), async (req, res) => {
@@ -72,6 +78,25 @@ router.post("/store", verifyToken, upload.array("images"), async (req, res) => {
       averageRating: 0,
       ratingCount: 0,
     });
+    await transporter.sendMail({
+      ...mailOptions,
+      to: req.user.email,
+      subject: "Your Property Listing Has Been Submitted! 🏡",
+      html: listingsubmittedmail
+        .replace(/{{FIRSTNAME}}/g, req.user.firstname)
+        .replace(/{{TITLE}}/g, title)
+        .replace(/{{CATEGORY}}/g, `${category} / ${subCategory}`)
+        .replace(/{{PURPOSE}}/g, purpose)
+        .replace(
+          /{{LOCATION}}/g,
+          `${location.state}, ${location.area}, ${location.locality}`
+        )
+        .replace(
+          /{{PRICE}}/g,
+          `${denomination}${Number(price).toLocaleString()} `
+        ),
+    });
+
     await User.findOneAndUpdate(
       { _id: userId },
       { $inc: { totalisting: 1 } },
@@ -284,7 +309,10 @@ router.put("/:id/status", verifyToken, async (req, res) => {
         .json({ error: true, message: "Invalid listing ID." });
     }
 
-    const listing = await Property.findById(listingId);
+    const listing = await Property.findById(listingId).populate(
+      "createdBy",
+      "firstname email"
+    );
     if (!listing) {
       return res
         .status(404)
@@ -298,10 +326,44 @@ router.put("/:id/status", verifyToken, async (req, res) => {
         .status(403)
         .json({ error: true, message: "Not authorized to update status." });
     }
-
+    console.log(listing.createdBy.email);
     const { status } = req.body;
     const validStatuses = ["active", "archived", "sold", "rented", "pending"];
     const specialStatuses = ["featured", "homepage", "removeFromHomepage"];
+    if (listing.status !== "active" && status === "active") {
+      await transporter.sendMail({
+        ...mailOptions,
+        to: listing.createdBy.email,
+        subject: "Your Property Listing Has Been Approved! 🏡",
+        html: listingApprovedMail
+          .replace(/{{FIRSTNAME}}/g, listing.createdBy.firstname || "User")
+          .replace(/{{TITLE}}/g, listing.title || "N/A")
+          .replace(
+            /{{CATEGORY}}/g,
+            `${listing.category || "N/A"} / ${listing.subCategory || ""}`
+          )
+          .replace(/{{PURPOSE}}/g, listing.purpose || "N/A")
+          .replace(
+            /{{LOCATION}}/g,
+            `${listing.location?.state || ""}, ${
+              listing.location?.area || ""
+            }, ${listing.location?.locality || ""}`
+          )
+          .replace(
+            /{{PRICE}}/g,
+            listing.price
+              ? `${listing.denomination || ""}${Number(
+                  listing.price
+                ).toLocaleString()}`
+              : "N/A"
+          )
+          .replace(/{{BEDROOMS}}/g, listing.bedrooms || "N/A")
+          .replace(/{{BATHROOMS}}/g, listing.bathrooms || "N/A")
+          .replace(/{{TOILETS}}/g, listing.toilets || "N/A")
+          .replace(/{{AREASIZE}}/g, listing.areaSize || "N/A")
+          .replace(/{{PROPERTY_ID}}/g, listing._id.toString()),
+      });
+    }
 
     if (!validStatuses.includes(status) && !specialStatuses.includes(status)) {
       return res

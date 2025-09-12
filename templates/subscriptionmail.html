@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Welcome to HouseHunter.ng</title>
+    <title>Payment Successful – Subscription Activated</title>
   </head>
   <body
     style="
@@ -37,30 +37,30 @@
               <td
                 style="font-size: 22px; font-weight: 700; padding-bottom: 15px; color:#111111; text-align: center;"
               >
-                Welcome to HouseHunter.ng, {{FIRSTNAME}}!
+                Payment Successful, {{FIRSTNAME}}! 🎉
               </td>
             </tr>
 
             <!-- Intro -->
             <tr>
               <td style="font-size: 16px; line-height: 26px; padding-bottom: 20px; color: #444444;">
-                Hi <strong>{{FIRSTNAME}} {{LASTNAME}}</strong>,<br /><br />
-                Thank you for joining <strong>HouseHunter.ng</strong> — Nigeria’s trusted property
-                listing platform where you can <strong>find, rent, buy, and list houses</strong>
-                with ease. Whether you’re a property seeker, landlord, or agent, we’re here to
-                make your journey simple and stress-free.
+                Hi <strong>{{FIRSTNAME}}</strong>,<br /><br />
+                Your payment has been <strong>successfully processed</strong> and your
+                <strong>{{PLAN}}</strong> subscription on <strong>HouseHunter.ng</strong>
+                is now active.
               </td>
             </tr>
 
-            <!-- Value Section -->
+            <!-- Subscription Details -->
             <tr>
               <td style="font-size: 15px; line-height: 24px; padding-bottom: 20px; color:#555555;">
-                With your new account, you can:
+                Here are your subscription details:
                 <ul style="margin-top: 10px; margin-bottom: 20px; padding-left: 20px; color:#555555;">
-                  <li>🏠 Browse hundreds of verified property listings.</li>
-                  <li>📌 List your own property and reach thousands of potential tenants or buyers.</li>
-                  <li>🤝 Connect with trusted landlords, agents, and fellow house hunters.</li>
-                  <li>🔔 Save your favorite listings and get notified of new opportunities.</li>
+                  <li><strong>Plan:</strong> {{PLAN}}</li>
+                  <li><strong>Amount Paid:</strong> {{CURRENCY}}{{AMOUNT}}</li>
+                  <li><strong>Status:</strong> Active ✅</li>
+                  <li><strong>Expiry Date:</strong> {{EXPIRYDATE}}</li>
+                  <li><strong>Listing Limit:</strong> {{LISTINGLIMIT}}</li>
                 </ul>
               </td>
             </tr>
@@ -69,7 +69,7 @@
             <tr>
               <td align="center" style="padding-bottom: 30px">
                 <a
-                  href="https://househunter.ng"
+                  href="https://househunter.ng/dashboard"
                   style="
                     background-color: #ae801e;
                     color: #ffffff;
@@ -82,7 +82,7 @@
                   "
                   target="_blank"
                 >
-                  Explore HouseHunter.ng
+                  Go to Dashboard
                 </a>
               </td>
             </tr>
@@ -90,8 +90,8 @@
             <!-- Closing -->
             <tr>
               <td style="font-size: 15px; line-height: 24px; padding-bottom: 20px; color:#444444;">
-                Once again, welcome to the HouseHunter community! 🏡  
-                We’re excited to help you on your journey to finding (or listing) the perfect home.
+                Thank you for your trust in HouseHunter.ng 🏡  
+                We’re excited to help you connect with the right clients and grow your property business.
                 <br /><br />
                 Warm regards,<br />
                 <strong>The HouseHunter.ng Team</strong>

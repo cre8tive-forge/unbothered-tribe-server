@@ -6,6 +6,12 @@ import { Subscription } from "../models/subscriptions.js";
 import { Timestamp } from "../models/timestamps.js";
 import verifyToken from "../middleware/verifyToken.js";
 import { nanoid } from "nanoid";
+import {
+  freePlanMail,
+  mailOptions,
+  paymentSuccessMail,
+  transporter,
+} from "../config/nodemailer.js";
 const router = express.Router();
 
 const flw = new Flutterwave(
@@ -105,6 +111,18 @@ router.post("/process-payment", verifyToken, async (req, res) => {
         { type: { $in: ["user", "subscription", "transaction"] } },
         { $set: { updatedAt: Date.now() } }
       );
+      await transporter.sendMail({
+        ...mailOptions,
+        to: email,
+        subject: `🎉 Your ${plan} Subscription is Active!`,
+        html: paymentSuccessMail
+          .replace(/{{FIRSTNAME}}/g, user.firstname || "User")
+          .replace(/{{PLAN}}/g, plan)
+          .replace(/{{AMOUNT}}/g, verifiedData.amount)
+          .replace(/{{CURRENCY}}/g, verifiedData.currency)
+          .replace(/{{LISTINGLIMIT}}/g, listingLimit)
+          .replace(/{{EXPIRYDATE}}/g, expiryDate.toDateString()),
+      });
 
       return res.status(200).json({
         error: false,
@@ -195,7 +213,15 @@ router.post("/free-plan", verifyToken, async (req, res) => {
       { type: { $in: ["user", "subscription", "transaction"] } },
       { $set: { updatedAt: Date.now() } }
     );
-
+    await transporter.sendMail({
+      ...mailOptions,
+      to: email,
+      subject: "🎉 Welcome to HouseHunter Free Plan",
+      html: freePlanMail
+        .replace(/{{FIRSTNAME}}/g, user.firstname || "User")
+        .replace(/{{PLAN}}/g, plan)
+        .replace(/{{EXPIRYDATE}}/g, expiryDate.toDateString()),
+    });
     return res.status(200).json({
       error: false,
       message: "Subscription to basic plan successful!",

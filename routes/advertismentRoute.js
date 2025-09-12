@@ -7,6 +7,11 @@ import { Timestamp } from "../models/timestamps.js";
 import { Advertisment } from "../models/advertisments.js";
 import mongoose from "mongoose";
 import { Transaction } from "../models/transactions.js";
+import {
+  adSubmissionMail,
+  mailOptions,
+  transporter,
+} from "../config/nodemailer.js";
 const router = express.Router();
 const flw = new Flutterwave(
   process.env.FLUTTERWAVE_PUBLIC_KEY,
@@ -58,7 +63,19 @@ router.post("/store", upload.single("image"), async (req, res) => {
       information,
       image: imageUrl,
     });
-
+    await transporter.sendMail({
+      ...mailOptions,
+      to: email,
+      subject: "📢 Your Advertisement Has Been Submitted",
+      html: adSubmissionMail
+        .replace(/{{FULLNAME}}/g, fullname || "User")
+        .replace(/{{COMPANY}}/g, company || "N/A")
+        .replace(/{{EMAIL}}/g, email || "N/A")
+        .replace(/{{NUMBER}}/g, number || "N/A")
+        .replace(/{{ADTYPE}}/g, adType || "General")
+        .replace(/{{LINK}}/g, link || "No link provided")
+        .replace(/{{INFORMATION}}/g, information || "No details provided"),
+    });
     await Timestamp.findOneAndUpdate(
       { type: "advertisment" },
       { $set: { updatedAt: Date.now() } },

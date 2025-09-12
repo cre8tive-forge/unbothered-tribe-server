@@ -1,11 +1,12 @@
 import { Newsletter } from "../models/newsletter.js";
 import express from "express";
 import { Timestamp } from "../models/timestamps.js";
+import { mailOptions, newslettermail, transporter } from "../config/nodemailer.js";
 const router = express.Router();
 router.post("/store", async (req, res) => {
   try {
     const { email } = req.body;
-    const emailExists = await Newsletter.find({ email: email });
+    const emailExists = await Newsletter.findOne({ email: email });
     if (emailExists) {
       return res.status(409).json({
         error: true,
@@ -21,6 +22,12 @@ router.post("/store", async (req, res) => {
         upsert: true,
       }
     );
+    await transporter.sendMail({
+      ...mailOptions,
+      to: email,
+      subject: "🎉 Welcome to the HouseHunter Newsletter",
+      html: newslettermail,
+    });
     return res.status(201).json({
       error: false,
       message: "You have successfully subscribed to the newsletter.",
