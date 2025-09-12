@@ -16,12 +16,12 @@ export const welcomeMail = fs.readFileSync(
   "utf-8"
 );
 export const mailOptions = {
-  from: `Househunter <${process.env.MAIL_USERNAME}>`,
+  from: `${process.env.MAIL_FROM_NAME} <${process.env.MAIL_USERNAME}>`,
 };
 
 export const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
+  host: process.env.MAIL_HOST,
+  port: process.env.MAIL_PORT,
   secure: true,
   auth: {
     user: process.env.MAIL_USERNAME,
