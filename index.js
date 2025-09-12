@@ -29,10 +29,12 @@ app.use(express.json());
 app.use(cookieParser());
 
 const allowedOrigins = [
-  "https://rentatruck-listing.vercel.app", 
-  "http://localhost:5173", 
-  "http://localhost:3000", 
-  "https://househunter.ng", 
+  "https://househunter-ng.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:3000",
+  "https://househunter.ng",
+  "https://Househunter.ng",
 ];
 app.use(
   cors({
