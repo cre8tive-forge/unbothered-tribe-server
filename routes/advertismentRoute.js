@@ -12,8 +12,7 @@ const flw = new Flutterwave(
   process.env.FLUTTERWAVE_PUBLIC_KEY,
   process.env.FLUTTERWAVE_SECRET_KEY
 );
-
-router.post("/store", verifyToken, upload.single("image"), async (req, res) => {
+router.post("/store", upload.single("image"), async (req, res) => {
   try {
     const {
       fullname,

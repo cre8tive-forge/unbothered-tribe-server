@@ -1,14 +1,14 @@
 {
-  "name": "rentahome-server",
+  "name": "househunter-server",
   "version": "1.0.0",
-  "description": "RentaHome Server Logic",
+  "description": "Househunter Server Logic",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js"
   },
   "type": "module",
-  "author": "bulliongram",
+  "author": "Cre8tiveforge",
   "license": "ISC",
   "dependencies": {
     "@sendgrid/mail": "^8.1.5",

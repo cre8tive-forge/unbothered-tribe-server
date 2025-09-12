@@ -32,7 +32,7 @@ const allowedOrigins = [
   "https://rentatruck-listing.vercel.app", 
   "http://localhost:5173", 
   "http://localhost:3000", 
-  "https://rentahome.com", 
+  "https://househunter.ng", 
 ];
 app.use(
   cors({
