@@ -30,30 +30,43 @@ app.use(cookieParser());
 
 const allowedOrigins = [
   "https://househunter-ng.vercel.app",
+  "https://househunter.ng",
+  "https://www.househunter.ng",
+  "www.househunter.ng",
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:3000",
-  "https://househunter.ng",
-  "https://Househunter.ng",
 ];
+
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin.toLowerCase())) {
         callback(null, true);
       } else {
+        console.error("Blocked by CORS:", origin);
         callback(new Error("Not allowed by CORS"));
       }
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
   })
 );
 
 app.options("*", cors());
 app.get("/ping", (req, res) => {
   res.status(200).send("pong");
+});
+app.use((req, res, next) => {
+  console.log(
+    "Incoming request:",
+    req.method,
+    req.originalUrl,
+    "from",
+    req.headers.origin
+  );
+  next();
 });
 
 app.use("/api/contact", contactRoute);
