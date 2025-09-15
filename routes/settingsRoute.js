@@ -8,7 +8,11 @@ import {
   mailOptions,
   transporter,
 } from "../config/nodemailer.js";
-import { upload, uploadToCloudinary } from "../resources/multer.js";
+import {
+  deleteFromCloudinary,
+  upload,
+  uploadToCloudinary,
+} from "../resources/multer.js";
 import { Timestamp } from "../models/timestamps.js";
 import verifyToken from "../middleware/verifyToken.js";
 const router = express.Router();
@@ -283,25 +287,36 @@ router.post(
           .json({ error: true, message: "Email and image are required." });
       }
 
-      const imageUrl = await uploadToCloudinary(req.file.buffer);
+      // 1. Find user first
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res
+          .status(404)
+          .json({ error: true, message: "User not found." });
+      }
 
-      if (!imageUrl) {
+      // 2. If previous profile photo exists, delete from Cloudinary
+      if (user.profilePhoto?.public_id) {
+        await deleteFromCloudinary(user.profilePhoto.public_id);
+      }
+
+      // 3. Upload new photo
+      const uploadedImage = await uploadToCloudinary(req.file.buffer);
+
+      if (!uploadedImage) {
         return res
           .status(500)
           .json({ error: true, message: "Failed to upload to Cloudinary." });
       }
 
+      // uploadedImage should return { url, public_id }
       const updatedUser = await User.findOneAndUpdate(
-        { email: email },
-        { $set: { profilePhoto: imageUrl } },
+        { email },
+        { $set: { profilePhoto: uploadedImage } },
         { new: true }
       );
 
-      if (!updatedUser) {
-        return res
-          .status(404)
-          .json({ error: true, message: "User not found." });
-      }
+      // 4. Update timestamp (if you need this for sync/tracking)
       await Timestamp.findOneAndUpdate(
         { type: "user" },
         { updatedAt: Date.now() },

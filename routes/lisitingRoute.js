@@ -490,7 +490,7 @@ router.post("/delete", verifyToken, async (req, res) => {
       lastUpdated: Date.now(),
     });
   } catch (err) {
-    console.error("Error deleting listing:", err);
+    console.log("Error deleting listing:", err);
     res.status(500).json({
       error: true,
       message: "Unable to delete listing. Please try again.",
@@ -560,7 +560,6 @@ router.put(
         );
       }
 
-      // 1. Correctly filter images to delete based on public_id
       const imagesToDelete = listing.images.filter(
         (img) =>
           !parsedExistingImages.some(

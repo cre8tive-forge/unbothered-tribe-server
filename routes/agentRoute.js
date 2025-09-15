@@ -12,6 +12,8 @@ import {
   mailOptions,
   transporter,
 } from "../config/nodemailer.js";
+import { Transaction } from "../models/transactions.js";
+import { Subscription } from "../models/subscriptions.js";
 const router = express.Router();
 
 router.get("/fetch", async (req, res) => {
@@ -176,6 +178,9 @@ router.post("/delete", verifyToken, async (req, res) => {
 
     await Review.deleteMany({ agent: agentId }, { session });
     await Review.deleteMany({ user: agentId }, { session });
+    await Transaction.deleteMany({ userId: agentId }, { session });
+    await Subscription.deleteMany({ userId: agentId }, { session });
+    await Report.deleteMany({ agent: agentId }, { session });
     await Enquiry.deleteMany({ agentId: agentId }, { session });
 
     const listings = await Property.find({ createdBy: agentId }).session(

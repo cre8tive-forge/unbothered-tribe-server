@@ -66,9 +66,10 @@ const userSchema = new mongoose.Schema(
     profilePhoto: {
       url: {
         type: String,
-        default: "https://robohash.org/david",
+        default:
+          "https://res.cloudinary.com/dvmfcdmcq/image/upload/v1757922328/favicon_kvjsc6.png",
       },
-      public_id: String,
+      public_id: { type: String, default: "favicon_kvjsc6" },
     },
     subscription: {
       type: mongoose.Schema.Types.ObjectId,

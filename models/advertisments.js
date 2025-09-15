@@ -37,6 +37,23 @@ const advertismentSchema = new mongoose.Schema(
       enum: ["pending", , "active", "expired", "cancelled"],
       default: "pending",
     },
+    duration: {
+      type: String,
+      default: "1 Month",
+    },
+    position: {
+      type: String,
+      enum: [
+        "Header Banner",
+        "Top of Homepage (Featured Section)",
+        "Footer Banner",
+        "Main Container",
+        "Sidebar",
+        "Single Listing Page Banner",
+        "None",
+      ],
+      default: "None",
+    },
     adType: {
       type: String,
       required: true,
@@ -59,14 +76,21 @@ const advertismentSchema = new mongoose.Schema(
       },
       public_id: String,
     },
+    banner: {
+      url: {
+        type: String,
+        required: true,
+      },
+      public_id: String,
+    },
     startDate: {
       type: Date,
-      default: Date.now,
+      default: null,
     },
     expiryDate: {
       type: Date,
       required: true,
-      default: Date.now,
+      default: null,
     },
   },
   { timestamps: true }

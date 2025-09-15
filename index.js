@@ -21,6 +21,7 @@ import faqRoute from "./routes/faqRoute.js";
 import blogRoute from "./routes/blogRoute.js";
 import userRoute from "./routes/userRoute.js";
 import connectToDB from "./library/mongodb.js";
+import monitors from "./library/cron-jobs.js";
 dotenv.config();
 
 const app = express();
@@ -58,16 +59,6 @@ app.options("*", cors());
 app.get("/ping", (req, res) => {
   res.status(200).send("pong");
 });
-app.use((req, res, next) => {
-  console.log(
-    "Incoming request:",
-    req.method,
-    req.originalUrl,
-    "from",
-    req.headers.origin
-  );
-  next();
-});
 
 app.use("/api/contact", contactRoute);
 app.use("/api/auth", authRoute);
@@ -87,8 +78,10 @@ app.use("/api/settings", settingsRoute);
 app.use("/api/faq", faqRoute);
 app.use("/api/report", reportRoute);
 app.use("/api/advertisment", advertismentRoute);
-
+monitors.subscriptionMonitor();
+monitors.adMonitor();
 connectToDB();
+
 app.listen(process.env.PORT || 5000, () =>
   console.log(`Listening on PORT ${process.env.PORT}`)
 );
