@@ -11,10 +11,13 @@ const propertySchema = new mongoose.Schema(
       zipCode: { type: String },
       street: { type: String },
     },
-    
+
     category: { type: String },
     subCategory: { type: String },
     price: { type: Number, required: true },
+    cautionFee: { type: Number },
+    serviceCharge: { type: Number },
+    agencyFee: { type: Number },
     denomination: { type: String, default: "NGN" },
     installmentPayment: { type: Boolean, default: false },
     appendTo: { type: String },

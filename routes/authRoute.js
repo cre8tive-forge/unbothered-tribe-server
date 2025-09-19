@@ -247,7 +247,7 @@ router.post("/signup", async (req, res) => {
         if (sendmail) {
           return res.status(201).json({
             error: false,
-            message: `Welcome to HouseHunter, ${firstname} ${lastname}`,
+            message: `Welcome to HouseHunter, ${firstname} ${lastname}! Proceed to login`,
           });
         } else {
           return res.status(400).json({
@@ -299,7 +299,7 @@ router.post("/google/signup", async (req, res) => {
       if (createUser && updateTimestamp)
         await transporter.sendMail({
           ...mailOptions,
-          subject: `Welcome to HouseHunter.ng, ${firstname}!`,
+          subject: `Welcome to HouseHunter.ng, ${firstname}! `,
           to: email,
           html: welcomeMail
             .replace(/{{FIRSTNAME}}/g, firstname)
@@ -307,7 +307,7 @@ router.post("/google/signup", async (req, res) => {
         });
       return res.status(201).json({
         error: false,
-        message: `Welcome to HouseHunter, ${firstname}`,
+        message: `Welcome to HouseHunter, ${firstname}! Proceed to login`,
       });
     }
   } catch (error) {

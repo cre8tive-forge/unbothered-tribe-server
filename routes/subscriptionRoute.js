@@ -1,5 +1,5 @@
 import express from "express";
-import Flutterwave from "flutterwave-node-v3";
+import axios from "axios";
 import { User } from "../models/users.js";
 import { Transaction } from "../models/transactions.js";
 import { Subscription } from "../models/subscriptions.js";
@@ -14,18 +14,14 @@ import {
 } from "../config/nodemailer.js";
 const router = express.Router();
 
-const flw = new Flutterwave(
-  process.env.FLUTTERWAVE_PUBLIC_KEY,
-  process.env.FLUTTERWAVE_SECRET_KEY
-);
-
 router.post("/process-payment", verifyToken, async (req, res) => {
-  const { transactionId, plan, email } = req.body;
+  const { transactionId, plan, email, amount, currency, reference, status } =
+    req.body;
 
   const expectedAmounts = {
-    Basic: 1000,
-    Premium: 5000,
-    Professional: 10000,
+    Basic: 0,
+    Premium: 15000,
+    Professional: 45000,
   };
 
   if (!transactionId || !plan || !email) {
@@ -44,25 +40,31 @@ router.post("/process-payment", verifyToken, async (req, res) => {
       return res.status(404).json({ error: true, message: "User not found." });
     }
 
-    const verificationResponse = await flw.Transaction.verify({
-      id: transactionId,
-    });
-    const verifiedData = verificationResponse.data;
+    // Verify payment with Paystack
+    const verificationResponse = await axios.get(
+      `https://api.paystack.co/transaction/verify/${reference}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        },
+      }
+    );
+
+    const verifiedData = verificationResponse.data.data;
 
     if (
-      (verifiedData.status === "successful" ||
-        verifiedData.status === "completed") &&
-      verifiedData.amount >= expectedAmounts[plan]
+      verifiedData.status === "success" &&
+      verifiedData.amount >= expectedAmounts[plan] * 100 // Paystack amounts are in kobo
     ) {
       const transaction = await Transaction.findOneAndUpdate(
         { transactionId: transactionId },
         {
           userId: user._id,
-          amount: verifiedData.amount,
+          amount: verifiedData.amount / 100, // Convert back to naira
           currency: verifiedData.currency,
-          status: verifiedData.status,
+          status: "successful",
           plan: plan,
-          reference: verifiedData.tx_ref,
+          reference: verifiedData.reference,
         },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
@@ -96,8 +98,8 @@ router.post("/process-payment", verifyToken, async (req, res) => {
         plan: plan,
         status: "Active",
         currency: verifiedData.currency,
-        amount: verifiedData.amount,
-        reference: verifiedData.tx_ref,
+        amount: verifiedData.amount / 100, // Convert back to naira
+        reference: verifiedData.reference,
         expiryDate,
         transaction: transaction._id,
       });
@@ -111,6 +113,7 @@ router.post("/process-payment", verifyToken, async (req, res) => {
         { type: { $in: ["user", "subscription", "transaction"] } },
         { $set: { updatedAt: Date.now() } }
       );
+
       await transporter.sendMail({
         ...mailOptions,
         to: email,
@@ -118,7 +121,7 @@ router.post("/process-payment", verifyToken, async (req, res) => {
         html: paymentSuccessMail
           .replace(/{{FIRSTNAME}}/g, user.firstname || "User")
           .replace(/{{PLAN}}/g, plan)
-          .replace(/{{AMOUNT}}/g, verifiedData.amount)
+          .replace(/{{AMOUNT}}/g, verifiedData.amount / 100) // Convert back to naira
           .replace(/{{CURRENCY}}/g, verifiedData.currency)
           .replace(/{{LISTINGLIMIT}}/g, listingLimit)
           .replace(/{{EXPIRYDATE}}/g, expiryDate.toDateString()),
@@ -127,6 +130,7 @@ router.post("/process-payment", verifyToken, async (req, res) => {
       return res.status(200).json({
         error: false,
         message: "Payment successful! Your subscription is now active.",
+        user,
       });
     } else {
       await Transaction.findOneAndUpdate(
@@ -148,6 +152,15 @@ router.post("/process-payment", verifyToken, async (req, res) => {
     }
   } catch (error) {
     console.error("Backend error:", error);
+
+    // Handle specific Paystack verification errors
+    if (error.response) {
+      return res.status(400).json({
+        error: true,
+        message: "Payment verification failed. Please try again.",
+      });
+    }
+
     return res.status(500).json({
       error: true,
       message: "An internal server error occurred.",
@@ -213,6 +226,7 @@ router.post("/free-plan", verifyToken, async (req, res) => {
       { type: { $in: ["user", "subscription", "transaction"] } },
       { $set: { updatedAt: Date.now() } }
     );
+
     await transporter.sendMail({
       ...mailOptions,
       to: email,
@@ -222,6 +236,7 @@ router.post("/free-plan", verifyToken, async (req, res) => {
         .replace(/{{PLAN}}/g, plan)
         .replace(/{{EXPIRYDATE}}/g, expiryDate.toDateString()),
     });
+
     return res.status(200).json({
       error: false,
       message: "Subscription to basic plan successful!",
@@ -283,4 +298,5 @@ router.post("/delete", verifyToken, async (req, res) => {
     });
   }
 });
+
 export default router;

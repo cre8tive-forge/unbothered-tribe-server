@@ -1,6 +1,5 @@
 import express from "express";
 import axios from "axios";
-import Flutterwave from "flutterwave-node-v3";
 import { upload, uploadToCloudinary } from "../resources/multer.js";
 import verifyToken from "../middleware/verifyToken.js";
 import { Timestamp } from "../models/timestamps.js";
@@ -13,11 +12,28 @@ import {
   transporter,
 } from "../config/nodemailer.js";
 import cloudinary from "../config/cloudinary.js";
+
 const router = express.Router();
-const flw = new Flutterwave(
-  process.env.FLUTTERWAVE_PUBLIC_KEY,
-  process.env.FLUTTERWAVE_SECRET_KEY
-);
+
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+
+const verifyPaystackTransaction = async (reference) => {
+  try {
+    const response = await axios.get(
+      `https://api.paystack.co/transaction/verify/${reference}`,
+      {
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(`Paystack verification failed: ${error.message}`);
+  }
+};
+
 router.post(
   "/store",
   upload.fields([
@@ -37,33 +53,53 @@ router.post(
         captchaToken,
         duration,
       } = req.body;
-      const imageFile = req.files.image?.[0];
-      const bannerFile = req.files.banner?.[0];
+
+      const imageFile = req.files?.image?.[0];
+      const bannerFile = req.files?.banner?.[0];
+
       if (!imageFile || !bannerFile) {
         return res.status(400).json({
           error: true,
           message: "Both the payment proof and banner image are required.",
         });
       }
-
+      if (!fullname || !company || !email || !adType || !captchaToken) {
+        return res.status(400).json({
+          error: true,
+          message:
+            "Missing required fields: fullname, company, email, adType, or captcha token.",
+        });
+      }
       const secretKey = process.env.RECAPTCHA_SECRET_KEY;
       const captchaResponse = await axios.post(
         `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${captchaToken}`
       );
       const captchaData = captchaResponse.data;
-      const ipAddress = req.ip;
-      const response = await fetch(`http://ip-api.com/json/${ipAddress}`);
-      const data = await response.json();
 
       if (!captchaData.success) {
         return res.status(401).json({
           error: true,
-          message: "Recaptcha verification failed. Please try again",
+          message: "Recaptcha verification failed. Please try again.",
         });
       }
-      const country = data.country ? data.country : "Unknown";
-      const imageUrl = await uploadToCloudinary(imageFile.buffer);
-      const bannerUrl = await uploadToCloudinary(bannerFile.buffer);
+
+      // Get IP location
+      const ipAddress = req.ip || req.connection.remoteAddress || "unknown";
+      let country = "Unknown";
+
+      try {
+        const response = await fetch(`http://ip-api.com/json/${ipAddress}`);
+        const data = await response.json();
+        country = data.country || "Unknown";
+      } catch (geoError) {
+        console.log("Geo-location failed:", geoError.message);
+      }
+
+      // Upload images to Cloudinary
+      const [imageUrl, bannerUrl] = await Promise.all([
+        uploadToCloudinary(imageFile.buffer),
+        uploadToCloudinary(bannerFile.buffer),
+      ]);
 
       if (!imageUrl || !bannerUrl) {
         return res.status(500).json({
@@ -71,7 +107,8 @@ router.post(
           message: "Failed to upload one or more images.",
         });
       }
-      await Advertisment.create({
+
+      const advertisement = await Advertisment.create({
         fullname,
         company,
         email,
@@ -80,184 +117,311 @@ router.post(
         link,
         adType,
         information,
-        duration,
+        duration: duration || "1 Month",
         image: imageUrl,
         banner: bannerUrl,
+        status: "pending",
       });
-      await transporter.sendMail({
-        ...mailOptions,
-        to: email,
-        subject: "📢 Your Advertisement Has Been Submitted",
-        html: adSubmissionMail
-          .replace(/{{FULLNAME}}/g, fullname || "User")
-          .replace(/{{COMPANY}}/g, company || "N/A")
-          .replace(/{{EMAIL}}/g, email || "N/A")
-          .replace(/{{NUMBER}}/g, number || "N/A")
-          .replace(/{{ADTYPE}}/g, adType || "General")
-          .replace(/{{LINK}}/g, link || "No link provided")
-          .replace(/{{INFORMATION}}/g, information || "No details provided"),
-      });
+
+      try {
+        await transporter.sendMail({
+          ...mailOptions,
+          to: email,
+          subject: "📢 Your Advertisement Has Been Submitted",
+          html: adSubmissionMail
+            .replace(/{{FULLNAME}}/g, fullname || "User")
+            .replace(/{{COMPANY}}/g, company || "N/A")
+            .replace(/{{EMAIL}}/g, email || "N/A")
+            .replace(/{{NUMBER}}/g, number || "N/A")
+            .replace(/{{ADTYPE}}/g, adType || "General")
+            .replace(/{{LINK}}/g, link || "No link provided")
+            .replace(/{{INFORMATION}}/g, information || "No details provided"),
+        });
+      } catch (emailError) {
+        console.error("Failed to send confirmation email:", emailError);
+        // Don't fail the request if email fails
+      }
+
+      // Update timestamp
       await Timestamp.findOneAndUpdate(
         { type: "advertisment" },
         { $set: { updatedAt: Date.now() } },
-        {
-          new: true,
-          upsert: true,
-        }
+        { new: true, upsert: true }
       );
 
       return res.status(201).json({
         error: false,
-        message: "Ad upload successful",
+        message:
+          "Advertisement submitted successfully. You will be notified once it's reviewed.",
+        advertisementId: advertisement._id,
       });
     } catch (err) {
-      console.error("Error processing ad upload:", err);
+      console.error("Error processing advertisement upload:", err);
       res.status(500).json({
         error: true,
         message: "Unable to process your request. Please try again.",
-        details: err.message,
+        details:
+          process.env.NODE_ENV === "development" ? err.message : undefined,
       });
     }
   }
 );
+
 router.get("/fetch", verifyToken, async (req, res) => {
   try {
-    const advertisments = await Advertisment.find().sort({ createdAt: -1 });
-    res.status(200).json(advertisments);
+    const advertisements = await Advertisment.find().sort({ createdAt: -1 });
+    res.status(200).json(advertisements);
   } catch (err) {
+    console.error("Error fetching advertisements:", err);
     res.status(500).json({
       error: true,
-      message: "Failed to fetch advertisments.",
+      message: "Failed to fetch advertisements.",
+      details: process.env.NODE_ENV === "development" ? err.message : undefined,
     });
   }
 });
 
 router.get("/fetch/:id", async (req, res) => {
   try {
+    const position = req.params.id;
+
+    if (!position) {
+      return res.status(400).json({
+        error: true,
+        message: "Position parameter is required.",
+      });
+    }
+
     const ads = await Advertisment.find({
       status: "active",
-      position: req.params.id,
-    }).sort({ createdAt: -1 });
+      position: position,
+      $or: [
+        { expiryDate: { $gt: new Date() } },
+        { expiryDate: { $exists: false } },
+      ],
+    })
+      .select("banner link company adType createdAt expiryDate")
+      .sort({ createdAt: -1 });
+
     return res.status(200).json(ads);
   } catch (err) {
+    console.error("Error fetching position advertisements:", err);
     res.status(500).json({
       error: true,
-      message: "Failed to fetch advertisments.",
+      message: "Failed to fetch advertisements.",
+      details: process.env.NODE_ENV === "development" ? err.message : undefined,
     });
   }
 });
+
+// Delete advertisement (Admin only)
 router.post("/delete", verifyToken, async (req, res) => {
   try {
     const { advertismentId } = req.body;
-    const advertismentToDelete = await Advertisment.findById(advertismentId);
-    if (!advertismentToDelete) {
-      return res
-        .status(404)
-        .json({ error: true, message: "Advertisment record not found." });
+
+    if (!advertismentId) {
+      return res.status(400).json({
+        error: true,
+        message: "Advertisement ID is required.",
+      });
     }
-    await cloudinary.uploader.destroy(advertismentToDelete.image.public_id);
-    await Advertisment.findByIdAndDelete(advertismentId);
+
+    if (!mongoose.Types.ObjectId.isValid(advertismentId)) {
+      return res.status(400).json({
+        error: true,
+        message: "Invalid advertisement ID format.",
+      });
+    }
+
+    if (req.user.role !== "Admin") {
+      return res.status(403).json({
+        error: true,
+        message: "Not authorized to delete advertisements.",
+      });
+    }
+
+    const advertisementToDelete = await Advertisment.findById(advertismentId);
+    if (!advertisementToDelete) {
+      return res.status(404).json({
+        error: true,
+        message: "Advertisement record not found.",
+      });
+    }
+
+    // Delete images from Cloudinary
+    try {
+      if (advertisementToDelete.image?.public_id) {
+        await cloudinary.uploader.destroy(
+          advertisementToDelete.image.public_id
+        );
+      }
+      if (advertisementToDelete.banner?.public_id) {
+        await cloudinary.uploader.destroy(
+          advertisementToDelete.banner.public_id
+        );
+      }
+    } catch (cloudinaryError) {
+      console.error(
+        "Failed to delete images from Cloudinary:",
+        cloudinaryError
+      );
+    }
+
+    const advertisments = await Advertisment.findByIdAndDelete(advertismentId);
+
     await Timestamp.findOneAndUpdate(
       { type: "advertisment" },
       { updatedAt: Date.now() },
-      { new: true }
+      { new: true, upsert: true }
     );
-    const advertisments = await Advertisment.find().sort({ createdAt: -1 });
+
     res.status(200).json({
       error: false,
-      message: "Advertisment record deleted successfully.",
-      advertisments,
+      message: "Advertisement deleted successfully.",
+      advertisments: advertisments,
       lastUpdated: Date.now(),
     });
   } catch (err) {
-    console.error("Error deleting advertisment:", err);
+    console.error("Error deleting advertisement:", err);
     res.status(500).json({
       error: true,
-      message: "Unable to delete advertisment. Please try again.",
-      details: err.message,
+      message: "Unable to delete advertisement. Please try again.",
+      details: process.env.NODE_ENV === "development" ? err.message : undefined,
     });
   }
 });
+
+// Update advertisement status (Admin only)
 router.put("/status", verifyToken, async (req, res) => {
   try {
     const { advertismentId, status } = req.body;
+
+    if (!advertismentId || !status) {
+      return res.status(400).json({
+        error: true,
+        message: "Advertisement ID and status are required.",
+      });
+    }
+
     if (!mongoose.Types.ObjectId.isValid(advertismentId)) {
-      return res
-        .status(400)
-        .json({ error: true, message: "Invalid advertisment ID." });
+      return res.status(400).json({
+        error: true,
+        message: "Invalid advertisement ID.",
+      });
     }
-    const adexists = await Advertisment.findById(advertismentId);
-    if (!adexists) {
-      return res
-        .status(404)
-        .json({ error: true, message: "Advertisment not found." });
+
+    const validStatuses = [
+      "pending",
+      "approved",
+      "rejected",
+      "active",
+      "inactive",
+      "expired",
+    ];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        error: true,
+        message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+      });
     }
+
     if (req.user.role !== "Admin") {
       return res.status(403).json({
         error: true,
-        message: "Not authorized to update advertisment status.",
+        message: "Not authorized to update advertisement status.",
       });
     }
-    const advertisments = await Advertisment.findByIdAndUpdate(
+
+    const advertisement = await Advertisment.findById(advertismentId);
+    if (!advertisement) {
+      return res.status(404).json({
+        error: true,
+        message: "Advertisement not found.",
+      });
+    }
+
+    const updatedAdvertisement = await Advertisment.findByIdAndUpdate(
       advertismentId,
       { status: status },
       { new: true }
-    ).sort({ createdAt: -1 });
+    );
 
     await Timestamp.findOneAndUpdate(
       { type: "advertisment" },
       { updatedAt: Date.now() },
-      { new: true }
+      { new: true, upsert: true }
     );
+
     return res.status(200).json({
       error: false,
-      message: "Advertisment status updated successfully",
-      advertisments,
-      lastUpdated: Date.now(),
+      message: "Advertisement status updated successfully.",
+      advertisement: updatedAdvertisement,
     });
   } catch (err) {
-    console.error("Error updating advertisment status:", err);
+    console.error("Error updating advertisement status:", err);
     res.status(500).json({
       error: true,
-      message: "Unable to update advertisment status. Please try again.",
-      details: err.message,
+      message: "Unable to update advertisement status. Please try again.",
+      details: process.env.NODE_ENV === "development" ? err.message : undefined,
     });
   }
 });
+
+// Activate advertisement with position (Admin only)
 router.post("/activate", verifyToken, async (req, res) => {
   try {
     const { advertismentId, position } = req.body;
-    if (!mongoose.Types.ObjectId.isValid(advertismentId)) {
-      return res
-        .status(400)
-        .json({ error: true, message: "Invalid advertisment ID." });
+
+    if (!advertismentId || !position) {
+      return res.status(400).json({
+        error: true,
+        message: "Advertisement ID and position are required.",
+      });
     }
 
-    const adexists = await Advertisment.findById(advertismentId);
-    if (!adexists) {
-      return res
-        .status(404)
-        .json({ error: true, message: "Advertisment not found." });
+    if (!mongoose.Types.ObjectId.isValid(advertismentId)) {
+      return res.status(400).json({
+        error: true,
+        message: "Invalid advertisement ID.",
+      });
     }
+
     if (req.user.role !== "Admin") {
       return res.status(403).json({
         error: true,
-        message: "Not authorized to update advertisment status.",
+        message: "Not authorized to activate advertisements.",
       });
     }
+
+    const advertisement = await Advertisment.findById(advertismentId);
+    if (!advertisement) {
+      return res.status(404).json({
+        error: true,
+        message: "Advertisement not found.",
+      });
+    }
+
+    // Check if position is already taken
     const positionTaken = await Advertisment.findOne({
       position: position,
       status: "active",
+      _id: { $ne: advertismentId }, // Exclude current ad
     });
 
     if (positionTaken) {
       return res.status(409).json({
         error: true,
-        message: "Advertisment placement position already taken.",
+        message: "Advertisement placement position is already taken.",
+        conflictingAd: {
+          id: positionTaken._id,
+          company: positionTaken.company,
+        },
       });
     }
+
+    // Calculate expiry date based on duration
     let durationInDays;
-    switch (adexists.duration) {
+    switch (advertisement.duration) {
       case "1 Month":
         durationInDays = 30;
         break;
@@ -270,94 +434,242 @@ router.post("/activate", verifyToken, async (req, res) => {
       default:
         durationInDays = 30;
     }
+
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + durationInDays);
 
-    const advertisments = await Advertisment.findByIdAndUpdate(
+    const updatedAdvertisement = await Advertisment.findByIdAndUpdate(
       advertismentId,
       {
         position: position,
         status: "active",
-        startDate: Date.now(),
+        startDate: new Date(),
         expiryDate: expiryDate,
       },
       { new: true }
-    ).sort({ createdAt: -1 });
+    );
 
     await Timestamp.findOneAndUpdate(
       { type: "advertisment" },
       { updatedAt: Date.now() },
-      { new: true }
+      { new: true, upsert: true }
     );
+
     return res.status(200).json({
       error: false,
-      message: "Advertisment status updated successfully",
-      advertisments,
-      lastUpdated: Date.now(),
+      message: "Advertisement activated successfully.",
+      advertisement: updatedAdvertisement,
     });
   } catch (err) {
-    console.error("Error updating advertisment status:", err);
+    console.error("Error activating advertisement:", err);
     res.status(500).json({
       error: true,
-      message: "Unable to update advertisment status. Please try again.",
-      details: err.message,
+      message: "Unable to activate advertisement. Please try again.",
+      details: process.env.NODE_ENV === "development" ? err.message : undefined,
     });
   }
 });
+
+// Process payment verification
 router.post("/process-payment", async (req, res) => {
-  const { transactionId, plan, email } = req.body;
-
-  if (!transactionId || !plan || !email) {
-    return res
-      .status(400)
-      .json({ error: true, message: "Missing required details." });
-  }
-
   try {
-    const verificationResponse = await flw.Transaction.verify({
-      id: transactionId,
-    });
-    const verifiedData = verificationResponse.data;
+    const { reference, email, plan, amount, currency, transactionId } =
+      req.body;
 
-    if (
-      verifiedData.status === "successful" ||
-      verifiedData.status === "completed"
-    ) {
-      await Transaction.findOneAndUpdate(
-        { transactionId: transactionId },
-        {
-          amount: verifiedData.amount,
-          currency: verifiedData.currency,
-          status: verifiedData.status,
-          plan: plan,
-          reference: verifiedData.tx_ref,
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      );
-      await Timestamp.findOneAndUpdate(
-        { type: "transaction" },
-        { $set: { updatedAt: Date.now() } },
-        {
-          new: true,
-          upsert: true,
-        }
-      );
-      return res.status(200).json({
-        error: false,
-        message: "Payment completed successfully",
-      });
-    } else {
+    // Validate required fields
+    if (!reference || !plan || !email || !amount || !currency) {
       return res.status(400).json({
         error: true,
-        message: "Payment failed. Please try again.",
+        message:
+          "Missing required payment details: reference, plan, email, amount, or currency.",
       });
     }
+
+    // Verify transaction with Paystack
+    const verificationResponse = await verifyPaystackTransaction(reference);
+
+    if (!verificationResponse.status || !verificationResponse.data) {
+      return res.status(400).json({
+        error: true,
+        message:
+          "Payment verification failed. Invalid response from payment provider.",
+      });
+    }
+
+    const verifiedData = verificationResponse.data;
+    const paidAmount = verifiedData.amount / 100; // Convert from kobo to naira
+    const expectedAmount = parseFloat(amount);
+
+    // Validate payment success and amount
+    if (verifiedData.status !== "success") {
+      return res.status(400).json({
+        error: true,
+        message: "Payment was not successful. Please try again.",
+        paymentStatus: verifiedData.status,
+      });
+    }
+
+    if (paidAmount !== expectedAmount) {
+      return res.status(400).json({
+        error: true,
+        message: "Payment amount mismatch. Please contact support.",
+        expected: expectedAmount,
+        paid: paidAmount,
+      });
+    }
+
+    // Check if transaction already exists
+    const existingTransaction = await Transaction.findOne({
+      reference: verifiedData.reference,
+    });
+
+    if (existingTransaction) {
+      return res.status(409).json({
+        error: true,
+        message: "This payment has already been processed.",
+        transactionId: existingTransaction._id,
+      });
+    }
+
+    // Save transaction to database
+    const transaction = await Transaction.create({
+      transactionId: verifiedData.id,
+      amount: paidAmount,
+      currency: verifiedData.currency,
+      status: verifiedData.status,
+      plan: plan,
+      reference: verifiedData.reference,
+      email: email,
+      paidAt: new Date(verifiedData.paid_at),
+      channel: verifiedData.channel,
+      fees: verifiedData.fees ? verifiedData.fees / 100 : 0,
+      customerCode: verifiedData.customer?.customer_code,
+      authorizationCode: verifiedData.authorization?.authorization_code,
+      metadata: verifiedData.metadata || {},
+    });
+
+    // Update timestamp
+    await Timestamp.findOneAndUpdate(
+      { type: "transaction" },
+      { $set: { updatedAt: Date.now() } },
+      { new: true, upsert: true }
+    );
+
+    return res.status(200).json({
+      error: false,
+      message: "Payment verified and processed successfully.",
+      transactionId: transaction._id,
+      reference: verifiedData.reference,
+    });
   } catch (error) {
-    console.error("Backend error:", error);
-    return res.status(500).json({
+    console.error("Payment processing error:", error);
+
+    // Determine appropriate error message
+    let errorMessage = "Payment processing failed. Please try again.";
+    let statusCode = 500;
+
+    if (error.message.includes("Paystack verification failed")) {
+      errorMessage =
+        "Payment verification failed. Please contact support if you were charged.";
+      statusCode = 400;
+    } else if (error.message.includes("Network Error")) {
+      errorMessage =
+        "Network error during payment verification. Please try again.";
+      statusCode = 503;
+    }
+
+    return res.status(statusCode).json({
       error: true,
-      message: "An internal server error occurred.",
+      message: errorMessage,
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 });
+
+// Test Paystack connection (Development/Admin only)
+router.get("/test-paystack", verifyToken, async (req, res) => {
+  try {
+    if (process.env.NODE_ENV === "production" && req.user.role !== "Admin") {
+      return res.status(403).json({
+        error: true,
+        message: "Not authorized to access this endpoint.",
+      });
+    }
+
+    // Test Paystack API connection
+    const testResponse = await axios.get("https://api.paystack.co/bank", {
+      headers: {
+        Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    res.json({
+      error: false,
+      message: "Paystack connection successful",
+      api_available: testResponse.status === 200,
+      environment: process.env.NODE_ENV,
+    });
+  } catch (error) {
+    console.error("Paystack connection test failed:", error);
+    res.status(500).json({
+      error: true,
+      message: "Paystack connection test failed",
+      details: error.message,
+    });
+  }
+});
+
+// Get expired advertisements (Cron job endpoint)
+router.get("/expired", verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== "Admin") {
+      return res.status(403).json({
+        error: true,
+        message: "Not authorized to access this endpoint.",
+      });
+    }
+
+    const expiredAds = await Advertisment.find({
+      status: "active",
+      expiryDate: { $lte: new Date() },
+    });
+
+    // Update expired advertisements
+    if (expiredAds.length > 0) {
+      await Advertisment.updateMany(
+        { _id: { $in: expiredAds.map((ad) => ad._id) } },
+        { status: "expired" }
+      );
+
+      await Timestamp.findOneAndUpdate(
+        { type: "advertisment" },
+        { updatedAt: Date.now() },
+        { new: true, upsert: true }
+      );
+    }
+
+    res.json({
+      error: false,
+      message: `Found and updated ${expiredAds.length} expired advertisements`,
+      expiredCount: expiredAds.length,
+      expiredAds: expiredAds.map((ad) => ({
+        id: ad._id,
+        company: ad.company,
+        position: ad.position,
+        expiryDate: ad.expiryDate,
+      })),
+    });
+  } catch (error) {
+    console.error("Error processing expired advertisements:", error);
+    res.status(500).json({
+      error: true,
+      message: "Failed to process expired advertisements",
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+});
+
 export default router;

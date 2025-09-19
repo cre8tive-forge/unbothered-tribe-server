@@ -89,7 +89,6 @@ const advertismentSchema = new mongoose.Schema(
     },
     expiryDate: {
       type: Date,
-      required: true,
       default: null,
     },
   },
