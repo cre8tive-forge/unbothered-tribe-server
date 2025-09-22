@@ -66,10 +66,9 @@ const userSchema = new mongoose.Schema(
     profilePhoto: {
       url: {
         type: String,
-        default:
-          "https://res.cloudinary.com/dvmfcdmcq/image/upload/v1757922328/favicon_kvjsc6.png",
+        default: "https://www.househunter.ng/favicon.png",
       },
-      public_id: { type: String, default: "favicon_kvjsc6" },
+      public_id: { type: String, default: null },
     },
     subscription: {
       type: mongoose.Schema.Types.ObjectId,

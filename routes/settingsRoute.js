@@ -287,7 +287,6 @@ router.post(
           .json({ error: true, message: "Email and image are required." });
       }
 
-      // 1. Find user first
       const user = await User.findOne({ email });
       if (!user) {
         return res
@@ -295,12 +294,10 @@ router.post(
           .json({ error: true, message: "User not found." });
       }
 
-      // 2. If previous profile photo exists, delete from Cloudinary
-      if (user.profilePhoto?.public_id) {
+      if (user.profilePhoto?.public_id && user.profilePhoto?.public_id !== "") {
         await deleteFromCloudinary(user.profilePhoto.public_id);
       }
 
-      // 3. Upload new photo
       const uploadedImage = await uploadToCloudinary(req.file.buffer);
 
       if (!uploadedImage) {
