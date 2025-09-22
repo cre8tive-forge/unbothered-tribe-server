@@ -56,6 +56,7 @@ router.post("/login/code", async (req, res) => {
       .json({ error: false, message: "Code sent to email." });
   } catch (err) {
     console.error("Error sending mail:", err);
+    console.log("Error sending mail:", err);
     return res
       .status(500)
       .json({ error: true, message: "Failed to send code." });
