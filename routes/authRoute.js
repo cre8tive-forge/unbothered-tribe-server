@@ -49,7 +49,9 @@ router.post("/login/code", async (req, res) => {
       ...mailOptions,
       subject: `Your temporary Househunter code is ${code}`,
       to: email,
-      html: codeEmailTemplate.replaceAll("{{LOGIN_CODE}}", code),
+      html: codeEmailTemplate
+        .replaceAll("{{LOGIN_CODE}}", code)
+        .replaceAll("{{FIRSTNAME}}", user.firstname),
     });
     return res
       .status(200)
