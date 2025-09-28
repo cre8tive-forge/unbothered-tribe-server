@@ -27,7 +27,6 @@ export const uploadToCloudinary = (fileBuffer) => {
 export const deleteFromCloudinary = async (public_id) => {
   try {
     await cloudinary.uploader.destroy(public_id);
-    console.log(`Successfully deleted image with public_id: ${public_id}`);
     return { success: true };
   } catch (error) {
     console.error(`Error deleting image with public_id: ${public_id}`, error);

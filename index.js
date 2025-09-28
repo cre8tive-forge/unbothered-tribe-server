@@ -18,6 +18,7 @@ import settingsRoute from "./routes/settingsRoute.js";
 import reportRoute from "./routes/reportRoute.js";
 import advertismentRoute from "./routes/advertismentRoute.js";
 import faqRoute from "./routes/faqRoute.js";
+import mailRoute from "./routes/mailRoute.js";
 import blogRoute from "./routes/blogRoute.js";
 import userRoute from "./routes/userRoute.js";
 import connectToDB from "./library/mongodb.js";
@@ -60,6 +61,9 @@ app.get("/ping", (req, res) => {
   res.status(200).send("pong");
 });
 
+
+
+
 app.use("/api/contact", contactRoute);
 app.use("/api/auth", authRoute);
 app.use("/api/reviews", reviewRoute);
@@ -78,6 +82,7 @@ app.use("/api/settings", settingsRoute);
 app.use("/api/faq", faqRoute);
 app.use("/api/report", reportRoute);
 app.use("/api/advertisment", advertismentRoute);
+app.use("/api/mail", mailRoute);
 monitors.subscriptionMonitor();
 monitors.adMonitor();
 connectToDB();

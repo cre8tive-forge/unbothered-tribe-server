@@ -84,24 +84,24 @@ router.post("/store", verifyToken, upload.array("images"), async (req, res) => {
       averageRating: 0,
       ratingCount: 0,
     });
-    // await transporter.sendMail({
-    //   ...mailOptions,
-    //   to: req.user.email,
-    //   subject: "Your Property Listing Has Been Submitted! 🏡",
-    //   html: listingsubmittedmail
-    //     .replace(/{{FIRSTNAME}}/g, req.user.firstname)
-    //     .replace(/{{TITLE}}/g, title)
-    //     .replace(/{{CATEGORY}}/g, `${category} / ${subCategory}`)
-    //     .replace(/{{PURPOSE}}/g, purpose)
-    //     .replace(
-    //       /{{LOCATION}}/g,
-    //       `${location.state}, ${location.area}, ${location.locality}`
-    //     )
-    //     .replace(
-    //       /{{PRICE}}/g,
-    //       `${denomination}${Number(price).toLocaleString()} `
-    //     ),
-    // });
+    await transporter.sendMail({
+      ...mailOptions,
+      to: req.user.email,
+      subject: "Your Property Listing Has Been Submitted! 🏡",
+      html: listingsubmittedmail
+        .replace(/{{FIRSTNAME}}/g, req.user.firstname)
+        .replace(/{{TITLE}}/g, title)
+        .replace(/{{CATEGORY}}/g, `${category} / ${subCategory}`)
+        .replace(/{{PURPOSE}}/g, purpose)
+        .replace(
+          /{{LOCATION}}/g,
+          `${location.state}, ${location.area}, ${location.locality}`
+        )
+        .replace(
+          /{{PRICE}}/g,
+          `${denomination}${Number(price).toLocaleString()} `
+        ),
+    });
 
     await User.findOneAndUpdate(
       { _id: userId },
@@ -134,7 +134,10 @@ router.post("/store", verifyToken, upload.array("images"), async (req, res) => {
 router.get("/fetch", async (req, res) => {
   try {
     const listings = await Property.find({ status: "active" })
-      .populate("createdBy", "profilePhoto _id firstname lastname number socials subscribed")
+      .populate(
+        "createdBy",
+        "profilePhoto _id firstname lastname number socials subscribed"
+      )
       .sort({
         createdAt: -1,
       });
