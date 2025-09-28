@@ -6,12 +6,9 @@ import { Timestamp } from "../models/timestamps.js";
 import { Advertisment } from "../models/advertisments.js";
 import mongoose from "mongoose";
 import { Transaction } from "../models/transactions.js";
-import {
-  adSubmissionMail,
-  mailOptions,
-  transporter,
-} from "../config/nodemailer.js";
+import { adSubmissionMail } from "../config/emailTemplates.js";
 import cloudinary from "../config/cloudinary.js";
+import { sendEmail } from "../config/zohoMailer.js";
 
 const router = express.Router();
 
@@ -124,8 +121,7 @@ router.post(
       });
 
       try {
-        await transporter.sendMail({
-          ...mailOptions,
+        await sendEmail({
           to: email,
           subject: "📢 Your Advertisement Has Been Submitted",
           html: adSubmissionMail
@@ -139,7 +135,6 @@ router.post(
         });
       } catch (emailError) {
         console.error("Failed to send confirmation email:", emailError);
-        // Don't fail the request if email fails
       }
 
       // Update timestamp

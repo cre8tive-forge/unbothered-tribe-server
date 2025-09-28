@@ -3,11 +3,7 @@ import jwt from "jsonwebtoken";
 import { User } from "../models/users.js";
 import bcryptjs from "bcryptjs";
 import { LoginCodes } from "../models/login_codes.js";
-import {
-  codeEmailTemplate,
-  mailOptions,
-  transporter,
-} from "../config/nodemailer.js";
+import { codeEmailTemplate } from "../config/emailTemplates.js";
 import {
   deleteFromCloudinary,
   upload,
@@ -15,6 +11,7 @@ import {
 } from "../resources/multer.js";
 import { Timestamp } from "../models/timestamps.js";
 import verifyToken from "../middleware/verifyToken.js";
+import { sendEmail } from "../config/zohoMailer.js";
 const router = express.Router();
 router.post("/email/change/verify", verifyToken, async (req, res) => {
   const { email } = req.body;
@@ -47,12 +44,12 @@ router.post("/email/change/verify", verifyToken, async (req, res) => {
   );
 
   try {
-    await transporter.sendMail({
-      ...mailOptions,
-      subject: `Your temporary Cre8tive Forge code is ${code}`,
+    await sendEmail({
       to: email,
-      html: codeEmailTemplate.replace("{{LOGIN_CODE}}", code),
+      subject: `Your temporary Househunter code is ${code}`,
+      html: codeEmailTemplate.replace("{{LOGIN_CODE}}", code).trim(),
     });
+
     return res
       .status(200)
       .json({ error: false, message: "Code sent to email.", email });

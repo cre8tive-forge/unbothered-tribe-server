@@ -3,16 +3,15 @@ import jwt from "jsonwebtoken";
 import { User } from "../models/users.js";
 import bcryptjs from "bcryptjs";
 import { LoginCodes } from "../models/login_codes.js";
-import {
-  codeEmailTemplate,
-  mailOptions,
-  transporter,
-  welcomeMail,
-} from "../config/nodemailer.js";
+import { codeEmailTemplate, welcomeMail } from "../config/emailTemplates.js";
 import { Timestamp } from "../models/timestamps.js";
 import { sendEmail } from "../config/zohoMailer.js";
 const router = express.Router();
-
+function cleanEmail(email) {
+  return String(email)
+    .trim()
+    .replace(/[\s<>]/g, "");
+}
 router.get("/verifyUser", async (req, res) => {
   try {
     const token = req.cookies.auth_token;
@@ -46,14 +45,14 @@ router.post("/login/code", async (req, res) => {
   );
 
   try {
-    await transporter.sendMail({
-      ...mailOptions,
-      subject: `Your temporary Househunter code is ${code}`,
+    await sendEmail({
       to: email,
+      subject: `Your temporary Househunter code is ${code}`,
       html: codeEmailTemplate
         .replaceAll("{{LOGIN_CODE}}", code)
         .replaceAll("{{FIRSTNAME}}", user.firstname),
     });
+
     return res
       .status(200)
       .json({ error: false, message: "Code sent to email." });
@@ -240,22 +239,32 @@ router.post("/signup", async (req, res) => {
       );
       const subject = `Welcome to HouseHunter.ng, ${firstname}!`;
       const html = welcomeMail
+        .trim()
         .replace(/{{FIRSTNAME}}/g, firstname)
         .replace(/{{LASTNAME}}/g, lastname);
+      let emailSentSuccessfully = false;
 
-      const sendmail = await sendEmail({ email, subject, html });
+      try {
+        await sendEmail({ to: email, subject, html });
+        emailSentSuccessfully = true;
+      } catch (emailError) {
+        console.error(
+          "Welcome email failed to send:",
+          emailError.response?.data || emailError.message
+        );
+        emailSentSuccessfully = false;
+      }
 
       if (createUser && updateTimestamp) {
-        if (sendmail.success) {
+        if (emailSentSuccessfully) {
           return res.status(201).json({
             error: false,
             message: `Welcome to HouseHunter, ${firstname} ${lastname}! Proceed to login`,
           });
         } else {
-          console.log("Email error:", sendmail.error);
           return res.status(201).json({
             error: false,
-            message: `Account created, but welcome mail failed to send.`,
+            message: `Account created successfully. Note: The welcome email failed to send.`,
           });
         }
       }
@@ -301,14 +310,14 @@ router.post("/google/signup", async (req, res) => {
         }
       );
       if (createUser && updateTimestamp)
-        await transporter.sendMail({
-          ...mailOptions,
-          subject: `Welcome to HouseHunter.ng, ${firstname}! `,
+        await sendEmail({
           to: email,
+          subject: `Welcome to HouseHunter.ng, ${firstname}! `,
           html: welcomeMail
             .replace(/{{FIRSTNAME}}/g, firstname)
             .replace(/{{LASTNAME}}/g, ""),
         });
+
       return res.status(201).json({
         error: false,
         message: `Welcome to HouseHunter, ${firstname}! Proceed to login`,

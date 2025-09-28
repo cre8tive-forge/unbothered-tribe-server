@@ -1,7 +1,8 @@
 import { Newsletter } from "../models/newsletter.js";
 import express from "express";
 import { Timestamp } from "../models/timestamps.js";
-import { mailOptions, newslettermail, transporter } from "../config/nodemailer.js";
+import { newslettermail } from "../config/emailTemplates.js";
+import { sendEmail } from "../config/zohoMailer.js";
 const router = express.Router();
 router.post("/store", async (req, res) => {
   try {
@@ -22,12 +23,12 @@ router.post("/store", async (req, res) => {
         upsert: true,
       }
     );
-    await transporter.sendMail({
-      ...mailOptions,
+    await sendEmail({
       to: email,
       subject: "🎉 Welcome to the HouseHunter Newsletter",
-      html: newslettermail,
+      html: newslettermail.trim(),
     });
+
     return res.status(201).json({
       error: false,
       message: "You have successfully subscribed to the newsletter.",

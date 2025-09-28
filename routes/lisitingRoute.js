@@ -15,9 +15,8 @@ import { Timestamp } from "../models/timestamps.js";
 import {
   listingApprovedMail,
   listingsubmittedmail,
-  mailOptions,
-  transporter,
-} from "../config/nodemailer.js";
+} from "../config/emailTemplates.js";
+import { sendEmail } from "../config/zohoMailer.js";
 
 const router = express.Router();
 router.post("/store", verifyToken, upload.array("images"), async (req, res) => {
@@ -84,8 +83,7 @@ router.post("/store", verifyToken, upload.array("images"), async (req, res) => {
       averageRating: 0,
       ratingCount: 0,
     });
-    await transporter.sendMail({
-      ...mailOptions,
+    await sendEmail({
       to: req.user.email,
       subject: "Your Property Listing Has Been Submitted! 🏡",
       html: listingsubmittedmail
@@ -340,8 +338,7 @@ router.put("/:id/status", verifyToken, async (req, res) => {
     const validStatuses = ["active", "archived", "sold", "rented", "pending"];
     const specialStatuses = ["featured", "homepage", "removeFromHomepage"];
     if (listing.status !== "active" && status === "active") {
-      await transporter.sendMail({
-        ...mailOptions,
+      await sendEmail({
         to: listing.createdBy.email,
         subject: "Your Property Listing Has Been Approved! 🏡",
         html: listingApprovedMail

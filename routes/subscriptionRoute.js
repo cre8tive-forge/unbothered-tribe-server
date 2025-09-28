@@ -6,12 +6,8 @@ import { Subscription } from "../models/subscriptions.js";
 import { Timestamp } from "../models/timestamps.js";
 import verifyToken from "../middleware/verifyToken.js";
 import { nanoid } from "nanoid";
-import {
-  freePlanMail,
-  mailOptions,
-  paymentSuccessMail,
-  transporter,
-} from "../config/nodemailer.js";
+import { freePlanMail, paymentSuccessMail } from "../config/emailTemplates.js";
+import { sendEmail } from "../config/zohoMailer.js";
 const router = express.Router();
 
 router.post("/process-payment", verifyToken, async (req, res) => {
@@ -113,9 +109,7 @@ router.post("/process-payment", verifyToken, async (req, res) => {
         { type: { $in: ["user", "subscription", "transaction"] } },
         { $set: { updatedAt: Date.now() } }
       );
-
-      await transporter.sendMail({
-        ...mailOptions,
+      await sendEmail({
         to: email,
         subject: `🎉 Your ${plan} Subscription is Active!`,
         html: paymentSuccessMail
@@ -124,7 +118,8 @@ router.post("/process-payment", verifyToken, async (req, res) => {
           .replace(/{{AMOUNT}}/g, verifiedData.amount / 100) // Convert back to naira
           .replace(/{{CURRENCY}}/g, verifiedData.currency)
           .replace(/{{LISTINGLIMIT}}/g, listingLimit)
-          .replace(/{{EXPIRYDATE}}/g, expiryDate.toDateString()),
+          .replace(/{{EXPIRYDATE}}/g, expiryDate.toDateString())
+          .trim(),
       });
 
       return res.status(200).json({
@@ -227,14 +222,14 @@ router.post("/free-plan", verifyToken, async (req, res) => {
       { $set: { updatedAt: Date.now() } }
     );
 
-    await transporter.sendMail({
-      ...mailOptions,
+    await sendEmail({
       to: email,
       subject: "🎉 Welcome to HouseHunter Free Plan",
       html: freePlanMail
         .replace(/{{FIRSTNAME}}/g, user.firstname || "User")
         .replace(/{{PLAN}}/g, plan)
-        .replace(/{{EXPIRYDATE}}/g, expiryDate.toDateString()),
+        .replace(/{{EXPIRYDATE}}/g, expiryDate.toDateString())
+        .trim(),
     });
 
     return res.status(200).json({
