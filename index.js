@@ -23,6 +23,8 @@ import blogRoute from "./routes/blogRoute.js";
 import userRoute from "./routes/userRoute.js";
 import connectToDB from "./library/mongodb.js";
 import monitors from "./library/cron-jobs.js";
+import { getAccessToken } from "./config/zohoMailer.js";
+import axios from "axios";
 dotenv.config();
 
 const app = express();
@@ -61,8 +63,21 @@ app.get("/ping", (req, res) => {
   res.status(200).send("pong");
 });
 
+app.get("/zoho/accounts", async (req, res) => {
+  try {
+    const accessToken = await getAccessToken();
+    const response = await axios.get("https://mail.zoho.com/api/accounts", {
+      headers: {
+        Authorization: `Zoho-oauthtoken ${accessToken}`,
+      },
+    });
 
-
+    res.json(response.data);
+  } catch (err) {
+    console.error("Zoho accounts error:", err.response?.data || err.message);
+    res.status(500).json({ error: "Failed to fetch accounts" });
+  }
+});
 
 app.use("/api/contact", contactRoute);
 app.use("/api/auth", authRoute);

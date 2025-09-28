@@ -10,6 +10,7 @@ import {
   welcomeMail,
 } from "../config/nodemailer.js";
 import { Timestamp } from "../models/timestamps.js";
+import { sendEmail } from "../config/zohoMailer.js";
 const router = express.Router();
 
 router.get("/verifyUser", async (req, res) => {
@@ -237,27 +238,27 @@ router.post("/signup", async (req, res) => {
           upsert: true,
         }
       );
-      const sendmail = await transporter.sendMail({
-        ...mailOptions,
-        subject: `Welcome to HouseHunter.ng, ${firstname}!`,
-        to: email,
-        html: welcomeMail
-          .replace(/{{FIRSTNAME}}/g, firstname)
-          .replace(/{{LASTNAME}}/g, lastname),
-      });
+      const subject = `Welcome to HouseHunter.ng, ${firstname}!`;
+      const html = welcomeMail
+        .replace(/{{FIRSTNAME}}/g, firstname)
+        .replace(/{{LASTNAME}}/g, lastname);
 
-      if (createUser && updateTimestamp)
-        if (sendmail) {
+      const sendmail = await sendEmail({ email, subject, html });
+
+      if (createUser && updateTimestamp) {
+        if (sendmail.success) {
           return res.status(201).json({
             error: false,
             message: `Welcome to HouseHunter, ${firstname} ${lastname}! Proceed to login`,
           });
         } else {
-          return res.status(400).json({
-            error: true,
-            message: "Mail Sending failed",
+          console.log("Email error:", sendmail.error);
+          return res.status(201).json({
+            error: false,
+            message: `Account created, but welcome mail failed to send.`,
           });
         }
+      }
     }
   } catch (error) {
     console.log(error);

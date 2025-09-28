@@ -1,6 +1,6 @@
 import axios from "axios";
 
-async function getAccessToken() {
+export async function getAccessToken() {
   const res = await axios.post(
     "https://accounts.zoho.com/oauth/v2/token",
     null,
