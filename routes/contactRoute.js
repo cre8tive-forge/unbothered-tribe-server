@@ -35,7 +35,7 @@ router.post("/store", async (req, res) => {
       country,
     });
     await sendEmail({
-      to: email,
+      to: 'info@househunter.ng',
       subject: `Contact message from ${fullname}`,
       html: message.trim(),
     });
