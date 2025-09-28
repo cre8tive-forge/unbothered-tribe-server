@@ -4,6 +4,7 @@ const router = express.Router();
 import axios from "axios";
 import verifyToken from "../middleware/verifyToken.js";
 import { Timestamp } from "../models/timestamps.js";
+import { sendEmail } from "../config/zohoMailer.js";
 
 router.post("/store", async (req, res) => {
   const { fullname, number, email, message, captchaToken } = req.body;
@@ -32,6 +33,11 @@ router.post("/store", async (req, res) => {
       number,
       message,
       country,
+    });
+    await sendEmail({
+      to: email,
+      subject: `Contact message from ${fullname}`,
+      html: message.trim(),
     });
     await Timestamp.findOneAndUpdate(
       { type: "contact" },
@@ -118,7 +124,7 @@ router.post("/mark-read", verifyToken, async (req, res) => {
       error: false,
       message: "Contact message marked as read.",
       lastUpdated: Date.now(),
-      contacts
+      contacts,
     });
   } catch (error) {
     console.error("Failed to mark contact message as read:", error);
