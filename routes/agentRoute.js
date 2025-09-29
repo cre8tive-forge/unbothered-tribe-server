@@ -264,4 +264,5 @@ router.get("/fetch/single/:id", async (req, res) => {
     });
   }
 });
+
 export default router;

@@ -10,6 +10,10 @@ export const codeEmailTemplate = fs.readFileSync(
   path.join(__dirname, "../templates/email-code-template.html"),
   "utf-8"
 );
+export const adminWelcomeMail = fs.readFileSync(
+  path.join(__dirname, "../templates/adminWelcomeMail.html"),
+  "utf-8"
+);
 export const welcomeMail = fs.readFileSync(
   path.join(__dirname, "../templates/welcomeMail.html"),
   "utf-8"

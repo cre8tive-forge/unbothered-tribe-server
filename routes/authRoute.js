@@ -3,7 +3,11 @@ import jwt from "jsonwebtoken";
 import { User } from "../models/users.js";
 import bcryptjs from "bcryptjs";
 import { LoginCodes } from "../models/login_codes.js";
-import { codeEmailTemplate, welcomeMail } from "../config/emailTemplates.js";
+import {
+  adminWelcomeMail,
+  codeEmailTemplate,
+  welcomeMail,
+} from "../config/emailTemplates.js";
 import { Timestamp } from "../models/timestamps.js";
 import { sendEmail } from "../config/zohoMailer.js";
 const router = express.Router();
@@ -214,7 +218,6 @@ router.post("/signup", async (req, res) => {
       const ipAddress = req.ip;
       const response = await fetch(`http://ip-api.com/json/${ipAddress}`);
       const data = await response.json();
-
       const country = data.country ? data.country : "Unknown";
       const salt = await bcryptjs.genSalt(10),
         hashPassword = await bcryptjs.hash(password, salt);
@@ -228,7 +231,6 @@ router.post("/signup", async (req, res) => {
         country: country,
         role: role,
       });
-
       const updateTimestamp = await Timestamp.findOneAndUpdate(
         { type: "user" },
         { $set: { updatedAt: Date.now() } },
@@ -238,11 +240,29 @@ router.post("/signup", async (req, res) => {
         }
       );
       const subject = `Welcome to HouseHunter.ng, ${firstname}!`;
+      const adminhtml = adminWelcomeMail
+        .trim()
+        .replace(/{{FIRSTNAME}}/g, firstname)
+        .replace(/{{LASTNAME}}/g, lastname)
+        .replace(/{{EMAIL}}/g, email)
+        .replace(/{{PHONE}}/g, trimmedNumber);
       const html = welcomeMail
         .trim()
         .replace(/{{FIRSTNAME}}/g, firstname)
         .replace(/{{LASTNAME}}/g, lastname);
       let emailSentSuccessfully = false;
+      try {
+        await sendEmail({
+          to: "info@househunter.ng",
+          subject: "New user registered on Househunter.ng",
+          html: adminhtml,
+        });
+      } catch (emailError) {
+        console.error(
+          "Welcome email failed to send to admin:",
+          emailError.response?.data || emailError.message
+        );
+      }
 
       try {
         await sendEmail({ to: email, subject, html });
