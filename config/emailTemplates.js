@@ -46,3 +46,7 @@ export const newslettermail = fs.readFileSync(
   path.join(__dirname, "../templates/newslettermail.html"),
   "utf-8"
 );
+export const adminNewslettermail = fs.readFileSync(
+  path.join(__dirname, "../templates/adminNewslettermail.html"),
+  "utf-8"
+);

@@ -1,7 +1,10 @@
 import { Newsletter } from "../models/newsletter.js";
 import express from "express";
 import { Timestamp } from "../models/timestamps.js";
-import { newslettermail } from "../config/emailTemplates.js";
+import {
+  adminNewslettermail,
+  newslettermail,
+} from "../config/emailTemplates.js";
 import { sendEmail } from "../config/zohoMailer.js";
 const router = express.Router();
 router.post("/store", async (req, res) => {
@@ -28,6 +31,18 @@ router.post("/store", async (req, res) => {
       subject: "🎉 Welcome to the HouseHunter Newsletter",
       html: newslettermail.trim(),
     });
+    try {
+      await sendEmail({
+        to: "info@househunter.ng",
+        subject: "New newsletter subscription on Househunter.ng",
+        html: adminNewslettermail.trim().replace(/{{EMAIL}}/g, email),
+      });
+    } catch (emailError) {
+      console.error(
+        "Welcome email failed to send to admin:",
+        emailError.response?.data || emailError.message
+      );
+    }
 
     return res.status(201).json({
       error: false,
