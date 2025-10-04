@@ -7,36 +7,24 @@ import { Timestamp } from "../models/timestamps.js";
 import { sendEmail } from "../config/zohoMailer.js";
 
 router.post("/store", async (req, res) => {
-  const { fullname, number, email, message, captchaToken } = req.body;
+  const { name, subject, email, message, captchaToken } = req.body;
 
   try {
-    const secretKey = process.env.RECAPTCHA_SECRET_KEY;
-    const captchaResponse = await axios.post(
-      `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${captchaToken}`
-    );
-    const captchaData = captchaResponse.data;
     const ipAddress = req.ip;
     const response = await fetch(`http://ip-api.com/json/${ipAddress}`);
     const data = await response.json();
 
-    if (!captchaData.success) {
-      return res.status(401).json({
-        error: true,
-        message: "Recaptcha verification failed. Please try again",
-      });
-    }
-
     const country = data.country ? data.country : "Unknown";
     await Contact.create({
-      fullname,
+      name,
       email,
-      number,
+      subject,
       message,
       country,
     });
     await sendEmail({
-      to: 'info@househunter.ng',
-      subject: `Contact message from ${fullname}`,
+      to: "business.cre8tiveforge@gmail.com",
+      subject: subject,
       html: message.trim(),
     });
     await Timestamp.findOneAndUpdate(
@@ -49,7 +37,8 @@ router.post("/store", async (req, res) => {
     );
     return res.status(200).json({
       error: false,
-      message: "Contact message sent successfully",
+      message:
+        "Your message was sent successfully. We'll get back to you soon.",
     });
   } catch (err) {
     console.log(err);

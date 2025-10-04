@@ -7,6 +7,7 @@ import {
 } from "../config/emailTemplates.js";
 import { sendEmail } from "../config/zohoMailer.js";
 const router = express.Router();
+
 router.post("/store", async (req, res) => {
   try {
     const { email } = req.body;
@@ -26,23 +27,18 @@ router.post("/store", async (req, res) => {
         upsert: true,
       }
     );
+
     await sendEmail({
       to: email,
-      subject: "🎉 Welcome to the HouseHunter Newsletter",
+      subject: "🎉 Welcome to the Unbothered Tribe",
       html: newslettermail.trim(),
     });
-    try {
-      await sendEmail({
-        to: "info@househunter.ng",
-        subject: "New newsletter subscription on Househunter.ng",
-        html: adminNewslettermail.trim().replace(/{{EMAIL}}/g, email),
-      });
-    } catch (emailError) {
-      console.error(
-        "Welcome email failed to send to admin:",
-        emailError.response?.data || emailError.message
-      );
-    }
+
+    await sendEmail({
+      to: "business.cre8tiveforge@gmail.com",
+      subject: "New newsletter subscription on Unbothered Tribe",
+      html: adminNewslettermail.trim().replace(/{{EMAIL}}/g, email),
+    });
 
     return res.status(201).json({
       error: false,
@@ -58,3 +54,4 @@ router.post("/store", async (req, res) => {
   }
 });
 export default router;
+

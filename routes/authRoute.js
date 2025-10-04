@@ -114,33 +114,28 @@ router.post("/google-login", async (req, res) => {
     res.status(500).json({ error: true, message: "Something went wrong" });
   }
 });
+
 router.post("/login", async (req, res) => {
-  const { email, code } = req.body;
-  if (!email || !code)
+  const { email, password } = req.body;
+  if (!email || !password)
     return res
       .status(400)
-      .json({ error: true, message: "Email and code are required." });
+      .json({ error: true, message: "Email and password are required." });
 
   try {
-    const entry = await LoginCodes.findOne({ email });
-    if (!entry) return res.status(400).json({ message: "Invalid code" });
-
-    if (code != entry.code)
-      return res.status(400).json({ message: "Invalid code" });
-
-    if (new Date(entry.expires_at) < new Date()) {
-      await LoginCodes.deleteOne({ email });
-      return res
-        .status(400)
-        .json({ error: true, message: "Code has expired." });
-    }
-
     let user = await User.findOne({ email });
 
     if (!user)
       return res
         .status(401)
-        .json({ error: true, message: "Account not found" });
+        .json({ error: true, message: "Account does not exist" });
+
+    const passwordMatch = await bcryptjs.compare(password, user.password);
+    if (!passwordMatch) {
+      return res
+        .status(401)
+        .json({ error: true, message: "Invalid credentials" });
+    }
 
     const userObj = user.toObject();
     delete userObj._id;
@@ -167,11 +162,14 @@ router.post("/login", async (req, res) => {
         error: false,
         token,
         user: userObj,
-        message: "Login successful. Redirecting...",
+        message: `Welcome ${user.firstname}!`,
       });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ error: "Something went wrong" });
+    return res.status(500).json({
+      error: true,
+      message: "Unable to process your request. Please try again ",
+    });
   }
 });
 
@@ -196,97 +194,95 @@ router.post("/logout", async (req, res) => {
 });
 
 router.post("/signup", async (req, res) => {
-  const { firstname, lastname, phoneNumber, email, password, role } = req.body;
+  const { firstname, lastname, email, password, confirmPassword } = req.body;
+  if (confirmPassword !== password) {
+    return res.status(401).json({
+      error: true,
+      message: "Passwords does not match",
+    });
+  }
   try {
-    const trimmedNumber = phoneNumber.trim();
-
-    const emailExists = await User.findOne({ email });
-    if (emailExists) {
+    const userExists = await User.findOne({ email });
+    if (userExists) {
       return res.status(409).json({
         error: true,
         message: "This email address already exists",
       });
     }
 
-    const numberExists = await User.findOne({ number: trimmedNumber });
-    if (numberExists) {
-      return res.status(409).json({
-        error: true,
-        message: "This phone number already exists",
-      });
-    } else {
-      const ipAddress = req.ip;
-      const response = await fetch(`http://ip-api.com/json/${ipAddress}`);
-      const data = await response.json();
-      const country = data.country ? data.country : "Unknown";
-      const salt = await bcryptjs.genSalt(10),
-        hashPassword = await bcryptjs.hash(password, salt);
+    const ipAddress = req.ip;
+    const response = await fetch(`http://ip-api.com/json/${ipAddress}`);
+    const data = await response.json();
+    const country = data.country ? data.country : "Unknown";
 
-      const createUser = await User.create({
-        firstname: firstname,
-        lastname: lastname,
-        number: phoneNumber,
-        email: email,
-        password: hashPassword,
-        country: country,
-        role: role,
+    const salt = await bcryptjs.genSalt(10);
+    const hashPassword = await bcryptjs.hash(password, salt);
+
+    const createUser = await User.create({
+      firstname,
+      lastname,
+      email,
+      password: hashPassword,
+      country,
+    });
+    const updateTimestamp = await Timestamp.findOneAndUpdate(
+      { type: "user" },
+      { $set: { updatedAt: Date.now() } },
+      {
+        new: true,
+        upsert: true,
+      }
+    );
+
+    const adminhtml = adminWelcomeMail
+      .trim()
+      .replace(/{{FIRSTNAME}}/g, firstname)
+      .replace(/{{LASTNAME}}/g, lastname)
+      .replace(/{{EMAIL}}/g, email)
+      .replace(/{{COUNTRY}}/g, country);
+
+    const html = welcomeMail
+      .trim()
+      .replace(/{{FIRSTNAME}}/g, firstname)
+      .replace(/{{LASTNAME}}/g, lastname);
+
+    try {
+      await sendEmail({
+        to: "business.cre8tiveforge@gmail.com",
+        subject: "New user registered on Unbothered Tribe",
+        html: adminhtml,
       });
-      const updateTimestamp = await Timestamp.findOneAndUpdate(
-        { type: "user" },
-        { $set: { updatedAt: Date.now() } },
-        {
-          new: true,
-          upsert: true,
-        }
+    } catch (emailError) {
+      console.error(
+        "Welcome email failed to send to admin:",
+        emailError.response?.data || emailError.message
       );
-      const subject = `Welcome to HouseHunter.ng, ${firstname}!`;
-      const adminhtml = adminWelcomeMail
-        .trim()
-        .replace(/{{FIRSTNAME}}/g, firstname)
-        .replace(/{{LASTNAME}}/g, lastname)
-        .replace(/{{EMAIL}}/g, email)
-        .replace(/{{PHONE}}/g, trimmedNumber);
-      const html = welcomeMail
-        .trim()
-        .replace(/{{FIRSTNAME}}/g, firstname)
-        .replace(/{{LASTNAME}}/g, lastname);
-      let emailSentSuccessfully = false;
-      try {
-        await sendEmail({
-          to: "info@househunter.ng",
-          subject: "New user registered on Househunter.ng",
-          html: adminhtml,
+    }
+
+    let emailSentSuccessfully = false;
+    const subject = `Welcome to the Unbothered Tribe, ${firstname}!`;
+    try {
+      await sendEmail({ to: email, subject, html });
+      emailSentSuccessfully = true;
+    } catch (emailError) {
+      console.error(
+        "Welcome email failed to send:",
+        emailError.response?.data || emailError.message
+      );
+      emailSentSuccessfully = false;
+    }
+
+    if (createUser && updateTimestamp) {
+      if (emailSentSuccessfully) {
+        return res.status(201).json({
+          error: false,
+          message: `Welcome to the Unbothered Tribe, ${firstname} ${lastname}! Proceed to login`,
         });
-      } catch (emailError) {
-        console.error(
-          "Welcome email failed to send to admin:",
-          emailError.response?.data || emailError.message
-        );
-      }
-
-      try {
-        await sendEmail({ to: email, subject, html });
-        emailSentSuccessfully = true;
-      } catch (emailError) {
-        console.error(
-          "Welcome email failed to send:",
-          emailError.response?.data || emailError.message
-        );
-        emailSentSuccessfully = false;
-      }
-
-      if (createUser && updateTimestamp) {
-        if (emailSentSuccessfully) {
-          return res.status(201).json({
-            error: false,
-            message: `Welcome to HouseHunter, ${firstname} ${lastname}! Proceed to login`,
-          });
-        } else {
-          return res.status(201).json({
-            error: false,
-            message: `Account created successfully. Note: The welcome email failed to send.`,
-          });
-        }
+      } else {
+        return res.status(201).json({
+          error: false,
+          message: `Account created successfully. Proceed to login`,
+        });
       }
     }
   } catch (error) {
