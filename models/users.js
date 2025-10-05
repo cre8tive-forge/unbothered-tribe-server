@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+    balance: { type: Number, required: true, default: 0.00 },
     firstname: { type: String, required: true, trim: true },
     lastname: { type: String, trim: true },
     country: { type: String, trim: true, default: "Nigeria" },
@@ -47,7 +48,6 @@ const userSchema = new mongoose.Schema(
       },
     ],
     password: { type: String },
-  
   },
   {
     timestamps: true,
