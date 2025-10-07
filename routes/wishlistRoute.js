@@ -1,7 +1,6 @@
 import express from "express";
 import verifyToken from "../middleware/verifyToken.js";
 import { User } from "../models/users.js";
-import { Property } from "../models/property.js";
 import { Timestamp } from "../models/timestamps.js";
 import jwt from "jsonwebtoken";
 const router = express.Router();

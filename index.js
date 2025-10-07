@@ -9,25 +9,11 @@ import addressRoute from "./routes/addressRoute.js";
 import newsletterRoute from "./routes/newsletterRoute.js";
 import wishlistRoute from "./routes/wishlistRoute.js";
 import accountRoute from "./routes/accountRoute.js";
-import reviewRoute from "./routes/reviewRoute.js";
-import lisitingRoute from "./routes/lisitingRoute.js";
-
-import agentRoute from "./routes/agentRoute.js";
-import enquiryRoute from "./routes/enquiryRoute.js";
-import statisticsRoute from "./routes/statisticsRoute.js";
 import timestampRoute from "./routes/timestampRoute.js";
-import subscriptionRoute from "./routes/subscriptionRoute.js";
 import transactionRoute from "./routes/transactionRoute.js";
+import orderRoute from "./routes/orderRoute.js";
 
-import settingsRoute from "./routes/settingsRoute.js";
-import reportRoute from "./routes/reportRoute.js";
-import advertismentRoute from "./routes/advertismentRoute.js";
-import faqRoute from "./routes/faqRoute.js";
 import mailRoute from "./routes/mailRoute.js";
-import blogRoute from "./routes/blogRoute.js";
-import userRoute from "./routes/userRoute.js";
-
-import monitors from "./library/cron-jobs.js";
 import { getAccessToken } from "./config/zohoMailer.js";
 import axios from "axios";
 dotenv.config();
@@ -74,21 +60,10 @@ app.use("/api/address", addressRoute);
 app.use("/api/newsletter", newsletterRoute);
 app.use("/api/account", accountRoute);
 app.use("/api/wishlist", wishlistRoute);
-// app.use("/api/listing", lisitingRoute);
-// app.use("/api/agent", agentRoute);
-// app.use("/api/enquiry", enquiryRoute);
-// app.use("/api/user", userRoute);
-// app.use("/api/statistics", statisticsRoute);
-// app.use("/api/timestamp", timestampRoute);
-// app.use("/api/blog", blogRoute);
-// app.use("/api/subscription", subscriptionRoute);
-// app.use("/api/transaction", transactionRoute);
-
-// app.use("/api/settings", settingsRoute);
-// app.use("/api/faq", faqRoute);
-// app.use("/api/report", reportRoute);
-// app.use("/api/advertisment", advertismentRoute);
-// app.use("/api/mail", mailRoute);
+app.use("/api/timestamp", timestampRoute);
+app.use("/api/transaction", transactionRoute);
+app.use("/api/order", orderRoute);
+app.use("/api/mail", mailRoute);
 
 connectToDB();
 
