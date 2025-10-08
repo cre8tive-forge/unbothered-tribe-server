@@ -8,10 +8,12 @@ import connectToDB from "./library/mongodb.js";
 import addressRoute from "./routes/addressRoute.js";
 import newsletterRoute from "./routes/newsletterRoute.js";
 import wishlistRoute from "./routes/wishlistRoute.js";
+import productRoute from "./routes/productRoute.js";
 import accountRoute from "./routes/accountRoute.js";
 import timestampRoute from "./routes/timestampRoute.js";
 import transactionRoute from "./routes/transactionRoute.js";
 import orderRoute from "./routes/orderRoute.js";
+import couponRoute from "./routes/couponRoute.js";
 
 import mailRoute from "./routes/mailRoute.js";
 import { getAccessToken } from "./config/zohoMailer.js";
@@ -60,9 +62,11 @@ app.use("/api/address", addressRoute);
 app.use("/api/newsletter", newsletterRoute);
 app.use("/api/account", accountRoute);
 app.use("/api/wishlist", wishlistRoute);
+app.use("/api/product", productRoute);
 app.use("/api/timestamp", timestampRoute);
 app.use("/api/transaction", transactionRoute);
 app.use("/api/order", orderRoute);
+app.use("/api/coupon", couponRoute);
 app.use("/api/mail", mailRoute);
 
 connectToDB();

@@ -21,7 +21,7 @@ const orderSchema = new mongoose.Schema(
         quantity: { type: Number, default: 1 },
       },
     ],
-
+    shippingFee: { type: Number, required: true },
     deliveryDetails: {
       firstname: String,
       lastname: String,

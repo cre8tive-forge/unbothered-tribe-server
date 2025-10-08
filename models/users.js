@@ -27,19 +27,18 @@ const userSchema = new mongoose.Schema(
     },
 
     address: {
-      firstname: { type: String, required: true, trim: true },
+      firstname: { type: String, trim: true },
       lastname: { type: String, trim: true },
       email: {
         type: String,
-        required: true,
         lowercase: true,
         trim: true,
       },
-      number: { type: String, required: true },
-      address: { type: String, required: true },
-      state: { type: String, required: true },
-      zipCode: { type: String, required: true },
-      country: { type: String, required: true },
+      number: { type: String },
+      address: { type: String },
+      state: { type: String },
+      zipCode: { type: String },
+      country: { type: String },
     },
 
     wishlist: [

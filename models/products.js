@@ -17,14 +17,15 @@ const productSchema = new mongoose.Schema(
     inStock: { type: Boolean, default: true },
     sale: { type: Boolean, default: false },
     isFeatured: { type: Boolean, default: false },
+    isRecommended: { type: Boolean, default: false },
     sizes: [{ type: String }],
     description: {
       information: [{ type: String }],
       details: {
         fabric: { type: String },
         baseColor: { type: String },
-        pantsLength: { type: String },
-        jacketLength: { type: String },
+        pantsLength: { type: Number },
+        jacketLength: { type: Number },
       },
     },
     images: [
@@ -44,7 +45,7 @@ const productSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["pending", "active", "sold", "rented", "archived"],
+      enum: ["pending", "available", "sold out", "archived"],
       default: "pending",
     },
     views: { type: Number, default: 0 },

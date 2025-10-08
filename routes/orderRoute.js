@@ -28,8 +28,14 @@ const verifyPaystackTransaction = async (reference) => {
 
 router.post("/process", async (req, res) => {
   try {
-    const { order, checkoutInputs, transactionId, reference, userId } =
-      req.body;
+    const {
+      order,
+      checkoutInputs,
+      transactionId,
+      reference,
+      userId,
+      shippingFee,
+    } = req.body;
 
     if (!order || !transactionId || !reference) {
       return res.status(400).json({
@@ -70,6 +76,7 @@ router.post("/process", async (req, res) => {
         quantity: item.quantity || 1,
       })),
       deliveryDetails: checkoutInputs,
+      shippingFee,
       payment: {
         transactionId,
         reference,

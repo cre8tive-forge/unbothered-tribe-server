@@ -27,6 +27,7 @@ router.get("/verifyUser", async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: true, message: "User not found" });
     }
+    
     res.json({ error: false, user });
   } catch (err) {
     res.status(401).json({ error: true, message: "Invalid or expired token" });
