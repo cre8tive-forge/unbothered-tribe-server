@@ -6,6 +6,8 @@ import {
   newslettermail,
 } from "../config/emailTemplates.js";
 import { sendEmail } from "../config/zohoMailer.js";
+import verifyToken from "../middleware/verifyToken.js";
+import mongoose from "mongoose";
 const router = express.Router();
 
 router.post("/store", async (req, res) => {
@@ -18,7 +20,13 @@ router.post("/store", async (req, res) => {
         message: "This email is already subscribed to the newsletter.",
       });
     }
-    Newsletter.create({ email });
+    const ipAddress = req.ip;
+    const response = await fetch(`http://ip-api.com/json/${ipAddress}`);
+    const data = await response.json();
+    const country = data.country || "Unknown";
+    const city = data.city || "Unknown";
+
+    Newsletter.create({ email, country, city });
     await Timestamp.findOneAndUpdate(
       { type: "newsletter" },
       { $set: { updatedAt: Date.now() } },
@@ -53,5 +61,64 @@ router.post("/store", async (req, res) => {
     });
   }
 });
-export default router;
+router.get("/fetch", verifyToken, async (req, res) => {
+  const user = req.user;
+  if (user.role !== "Admin") {
+    return res.status(400).json({
+      error: true,
+      message: "You are not authorized to access this route",
+    });
+  }
+  const newsletters = await Newsletter.find().sort({ createdAt: -1 });
+  res.status(200).json(newsletters);
+});
+router.post("/delete", verifyToken, async (req, res) => {
+  const { newsletterId } = req.body;
+  if (req.user.role !== "Admin") {
+    return res.status(400).json({
+      error: true,
+      message: "You are not authorized to perform this action",
+    });
+  }
+  if (!mongoose.Types.ObjectId.isValid(newsletterId)) {
+    return res.status(400).json({
+      error: true,
+      message: "Invalid newsletter ID.",
+    });
+  }
 
+  try {
+    const recordToDelete = await Newsletter.findById(newsletterId);
+    if (!recordToDelete) {
+      return res.status(404).json({
+        error: true,
+        message: "Newsletter record not found.",
+      });
+    }
+
+    await Newsletter.findByIdAndDelete(newsletterId);
+
+    await Timestamp.updateMany(
+      { type: { $in: ["Newsletter"] } },
+      { $set: { updatedAt: new Date() } }
+    );
+
+    const newsletters = await Newsletter.find().sort({ createdAt: -1 });
+    const lastUpdated = Date.now();
+
+    res.status(200).json({
+      error: false,
+      message: "Newsletter deleted successfully.",
+      newsletters,
+      lastUpdated,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      error: true,
+      message: "Failed to delete newsletter.",
+      details: err.message,
+    });
+  }
+});
+export default router;

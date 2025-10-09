@@ -14,6 +14,7 @@ import timestampRoute from "./routes/timestampRoute.js";
 import transactionRoute from "./routes/transactionRoute.js";
 import orderRoute from "./routes/orderRoute.js";
 import couponRoute from "./routes/couponRoute.js";
+import faqRoute from "./routes/faqRoute.js";
 
 import mailRoute from "./routes/mailRoute.js";
 import { getAccessToken } from "./config/zohoMailer.js";
@@ -60,6 +61,7 @@ app.use("/api/contact", contactRoute);
 app.use("/api/auth", authRoute);
 app.use("/api/address", addressRoute);
 app.use("/api/newsletter", newsletterRoute);
+app.use("/api/faq", faqRoute);
 app.use("/api/account", accountRoute);
 app.use("/api/wishlist", wishlistRoute);
 app.use("/api/product", productRoute);

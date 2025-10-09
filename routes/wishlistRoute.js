@@ -3,6 +3,7 @@ import verifyToken from "../middleware/verifyToken.js";
 import { User } from "../models/users.js";
 import { Timestamp } from "../models/timestamps.js";
 import jwt from "jsonwebtoken";
+import { Product } from "../models/products.js";
 const router = express.Router();
 
 router.post("/favorites/add", verifyToken, async (req, res) => {
@@ -67,71 +68,66 @@ router.post("/favorites/add", verifyToken, async (req, res) => {
     });
   }
 });
-// router.get("/fetch", verifyToken, async (req, res) => {
-//   const currentUser = req.user.id;
-//   try {
-//     const findUser = await User.findById(currentUser);
-//     if (!findUser) {
-//       return res.status(404).json({ error: true, message: "User not found" });
-//     }
-//     const favourites = await Product.find({
-//       _id: { $in: findUser.wishlist },
-//     }).sort({ createdAt: -1 });
-//     res.status(200).json(favourites);
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({
-//       error: true,
-//       message: "Failed to fetch saved items.",
-//     });
-//   }
-// });
-// router.post("/favorites/remove", verifyToken, async (req, res) => {
-//   const userId = req.user.id;
-//   const { productId } = req.body;
+router.get("/fetch", verifyToken, async (req, res) => {
+  const currentUser = req.user.id;
+  try {
+    const findUser = await User.findById(currentUser);
+    if (!findUser) {
+      return res.status(404).json({ error: true, message: "User not found" });
+    }
+    const favourites = await Product.find({
+      _id: { $in: findUser.wishlist },
+    }).sort({ createdAt: -1 });
+    res.status(200).json(favourites);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      error: true,
+      message: "Failed to fetch saved items.",
+    });
+  }
+});
+router.post("/remove", verifyToken, async (req, res) => {
+  const userId = req.user.id;
+  const { productId } = req.body;
 
-//   try {
-//     const user = await User.findById(userId);
-//     if (!user) {
-//       return res.status(404).json({ error: true, message: "User not found." });
-//     }
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: true, message: "User not found." });
+    }
+    const listingIndex = user.wishlist.indexOf(productId);
+    if (listingIndex > -1) {
+      user.wishlist.splice(listingIndex, 1);
+      user.updatedAt = Date.now();
+      await user.save();
 
-//     const listingIndex = user.wishlist.indexOf(productId);
+      await Timestamp.updateMany(
+        { type: { $in: ["wishlist", "user", "product"] } },
+        { $set: { updatedAt: Date.now() } }
+      );
 
-//     if (listingIndex > -1) {
-//       user.wishlist.splice(listingIndex, 1);
-//       user.updatedAt = Date.now();
-//       await user.save();
+      const wishlist = await Product.find({
+        _id: { $in: user.wishlist },
+      }).sort({ createdAt: -1 });
 
-//       await Timestamp.findOneAndUpdate(
-//         { type: "wishlist" },
-//         { $set: { updatedAt: Date.now() } },
-//         {
-//           new: true,
-//           upsert: true,
-//         }
-//       );
-//       const wishlist = await Property.find({
-//         _id: { $in: user.wishlist },
-//       }).sort({ createdAt: -1 });
-
-//       return res.status(200).json({
-//         error: false,
-//         wishlist,
-//         message: "Listing removed from favorites successfully.",
-//         lastUpdated: Date.now(),
-//       });
-//     } else {
-//       return res.status(404).json({
-//         error: true,
-//         message: "Listing not found in your favorites.",
-//       });
-//     }
-//   } catch (err) {
-//     res.status(500).json({
-//       message: "Unable to remove listing from favorites.",
-//       error: err.message,
-//     });
-//   }
-// });
+      return res.status(200).json({
+        error: false,
+        wishlist,
+        message: "Product removed from wishlist successfully.",
+        lastUpdated: Date.now(),
+      });
+    } else {
+      return res.status(404).json({
+        error: true,
+        message: "Listing not found in your favorites.",
+      });
+    }
+  } catch (err) {
+    res.status(500).json({
+      message: "Unable to remove listing from favorites.",
+      error: err.message,
+    });
+  }
+});
 export default router;

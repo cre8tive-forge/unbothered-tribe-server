@@ -2,7 +2,9 @@ import mongoose from "mongoose";
 
 const newsleterSchema = new mongoose.Schema(
   {
-    email: { type: String, required: true },
+    email: { type: String, required: true, unique: true, lowercase: true },
+    country: { type: String, required: true, default: "Unknown" },
+    city: { type: String, required: true, default: "Unknown" },
   },
   {
     timestamps: true,

@@ -23,6 +23,7 @@ const verifyPaystackTransaction = async (reference) => {
     return response.data;
   } catch (error) {
     throw new Error(`Paystack verification failed: ${error.message}`);
+    console.log(error)
   }
 };
 
